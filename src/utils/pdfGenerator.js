@@ -12,116 +12,142 @@ export async function generatePDF(report) {
   const margin = 15
   const contentWidth = pageWidth - margin * 2
 
-  // Canvasを作成してテキスト部分を描画
-  const dpi = 2 // 高解像度用
-  const canvasWidthPx = contentWidth * dpi * 3.78 // mmをpxに変換 (96dpi基準)
+  // Canvas設定
+  const dpi = 2
+  const canvasWidthPx = contentWidth * dpi * 3.78
   const pxPerMm = canvasWidthPx / contentWidth
 
-  // --- ヘッダー部分をCanvasで描画 ---
-  const headerCanvas = document.createElement('canvas')
-  headerCanvas.width = canvasWidthPx
-  headerCanvas.height = 400 * dpi
-  const hCtx = headerCanvas.getContext('2d')
+  let currentY = margin
 
-  hCtx.fillStyle = '#ffffff'
-  hCtx.fillRect(0, 0, headerCanvas.width, headerCanvas.height)
-
-  let hY = 40 * dpi
-
-  // タイトル（大きめ: 28pt相当）
-  hCtx.font = `bold ${28 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
-  hCtx.fillStyle = '#1a1a1a'
-  hCtx.textAlign = 'center'
-  hCtx.fillText(report.title || '報告書', headerCanvas.width / 2, hY)
-  hY += 20 * dpi
-
-  // 区切り線
-  hCtx.strokeStyle = '#4285F4'
-  hCtx.lineWidth = 3 * dpi
-  hCtx.beginPath()
-  hCtx.moveTo(0, hY)
-  hCtx.lineTo(headerCanvas.width, hY)
-  hCtx.stroke()
-  hY += 25 * dpi
-
-  // 日付（大きめ: 16pt相当）
-  hCtx.font = `${16 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
-  hCtx.fillStyle = '#333333'
-  hCtx.textAlign = 'left'
-  hCtx.fillText(`日付: ${report.date || '-'}`, 10 * dpi, hY)
-  hY += 18 * dpi
-
-  // 利用者名（大きめ: 16pt相当）
-  hCtx.fillText(`利用者: ${report.author || '-'}`, 10 * dpi, hY)
-  hY += 25 * dpi
-
-  // ヘッダー画像をPDFに追加
-  const headerHeight = hY / pxPerMm
-  headerCanvas.height = hY
-  const headerImg = headerCanvas.toDataURL('image/png')
-  pdf.addImage(headerImg, 'PNG', margin, margin, contentWidth, headerHeight)
-
-  let currentY = margin + headerHeight + 5
+  // --- ヘッダー部分を描画 ---
+  currentY = drawHeader(pdf, report, margin, currentY, contentWidth, canvasWidthPx, pxPerMm, dpi)
 
   // --- 本文 ---
   if (report.body) {
-    const bodyLines = wrapText(report.body, 35) // 1行あたり約35文字（大きめフォント用）
-    const lineHeight = 9 // mm（行間を広めに）
-    const bodyCanvasHeight = (bodyLines.length + 1) * lineHeight * pxPerMm
-
-    const bodyCanvas = document.createElement('canvas')
-    bodyCanvas.width = canvasWidthPx
-    bodyCanvas.height = Math.max(bodyCanvasHeight, 50)
-    const bCtx = bodyCanvas.getContext('2d')
-
-    bCtx.fillStyle = '#ffffff'
-    bCtx.fillRect(0, 0, bodyCanvas.width, bodyCanvas.height)
-    bCtx.font = `${15 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
-    bCtx.fillStyle = '#333333'
-    bCtx.textAlign = 'left'
-
-    let bY = 15 * dpi
-    for (const line of bodyLines) {
-      // ページを超える場合は新しいページ
-      if (currentY + lineHeight > pageHeight - margin) {
-        pdf.addPage()
-        currentY = margin
-      }
-      bY += lineHeight * pxPerMm
-    }
-
-    // 本文をまとめて描画
-    bodyCanvas.height = bY + 10 * dpi
-    const bCtx2 = bodyCanvas.getContext('2d')
-    bCtx2.fillStyle = '#ffffff'
-    bCtx2.fillRect(0, 0, bodyCanvas.width, bodyCanvas.height)
-    bCtx2.font = `${15 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
-    bCtx2.fillStyle = '#333333'
-    bCtx2.textAlign = 'left'
-
-    let bY2 = 15 * dpi
-    for (const line of bodyLines) {
-      bCtx2.fillText(line, 5 * dpi, bY2)
-      bY2 += lineHeight * pxPerMm
-    }
-
-    const bodyImgHeight = bY2 / pxPerMm
-
-    // 本文がページに収まるか確認
-    if (currentY + bodyImgHeight > pageHeight - margin) {
-      pdf.addPage()
-      currentY = margin
-    }
-
-    const bodyImg = bodyCanvas.toDataURL('image/png')
-    pdf.addImage(bodyImg, 'PNG', margin, currentY, contentWidth, bodyImgHeight)
-    currentY += bodyImgHeight + 5
+    currentY = drawBody(pdf, report.body, margin, currentY, contentWidth, canvasWidthPx, pxPerMm, dpi, pageHeight)
   }
 
   // --- 写真 ---
-  const photos = report.photos.filter(p => p !== null)
+  currentY = drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, pageHeight)
+
+  // --- フッター ---
+  const pageCount = pdf.getNumberOfPages()
+  for (let i = 1; i <= pageCount; i++) {
+    pdf.setPage(i)
+    pdf.setFontSize(8)
+    pdf.setTextColor(150, 150, 150)
+    pdf.text(`${i} / ${pageCount}`, pageWidth / 2, pageHeight - 8, { align: 'center' })
+    pdf.setTextColor(0, 0, 0)
+  }
+
+  // ダウンロード
+  const filename = `report_${report.date}_${report.title || 'untitled'}.pdf`
+  pdf.save(filename)
+}
+
+/**
+ * ヘッダー（タイトル、日付、利用者名）を描画
+ */
+function drawHeader(pdf, report, margin, currentY, contentWidth, canvasWidthPx, pxPerMm, dpi) {
+  // まず高さを計算
+  let hY = 40 * dpi
+  hY += 20 * dpi // タイトル後
+  hY += 25 * dpi // 区切り線後
+  hY += 18 * dpi // 日付後
+  hY += 25 * dpi // 利用者名後
+  const canvasHeight = hY
+
+  // 正しいサイズでCanvasを作成
+  const headerCanvas = document.createElement('canvas')
+  headerCanvas.width = canvasWidthPx
+  headerCanvas.height = canvasHeight
+  const ctx = headerCanvas.getContext('2d')
+
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, headerCanvas.width, headerCanvas.height)
+
+  let y = 40 * dpi
+
+  // タイトル（28pt相当）
+  ctx.font = `bold ${28 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
+  ctx.fillStyle = '#1a1a1a'
+  ctx.textAlign = 'center'
+  ctx.fillText(report.title || '報告書', headerCanvas.width / 2, y)
+  y += 20 * dpi
+
+  // 区切り線
+  ctx.strokeStyle = '#4285F4'
+  ctx.lineWidth = 3 * dpi
+  ctx.beginPath()
+  ctx.moveTo(0, y)
+  ctx.lineTo(headerCanvas.width, y)
+  ctx.stroke()
+  y += 25 * dpi
+
+  // 日付（16pt相当）
+  ctx.font = `${16 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
+  ctx.fillStyle = '#333333'
+  ctx.textAlign = 'left'
+  ctx.fillText(`日付: ${report.date || '-'}`, 10 * dpi, y)
+  y += 18 * dpi
+
+  // 利用者名（16pt相当）
+  ctx.fillText(`利用者: ${report.author || '-'}`, 10 * dpi, y)
+
+  // PDFに追加
+  const headerHeightMm = canvasHeight / pxPerMm
+  const headerImg = headerCanvas.toDataURL('image/png')
+  pdf.addImage(headerImg, 'PNG', margin, currentY, contentWidth, headerHeightMm)
+
+  return currentY + headerHeightMm + 5
+}
+
+/**
+ * 本文を描画
+ */
+function drawBody(pdf, body, margin, currentY, contentWidth, canvasWidthPx, pxPerMm, dpi, pageHeight) {
+  const bodyLines = wrapText(body, 35)
+  const lineHeightMm = 9
+  const lineHeightPx = lineHeightMm * pxPerMm
+
+  // Canvas高さを事前に計算
+  const totalHeightPx = (bodyLines.length * lineHeightPx) + 20 * dpi
+  const bodyCanvas = document.createElement('canvas')
+  bodyCanvas.width = canvasWidthPx
+  bodyCanvas.height = totalHeightPx
+  const ctx = bodyCanvas.getContext('2d')
+
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, bodyCanvas.width, bodyCanvas.height)
+  ctx.font = `${15 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
+  ctx.fillStyle = '#333333'
+  ctx.textAlign = 'left'
+
+  let textY = 15 * dpi
+  for (const line of bodyLines) {
+    ctx.fillText(line, 5 * dpi, textY)
+    textY += lineHeightPx
+  }
+
+  const bodyHeightMm = totalHeightPx / pxPerMm
+
+  // ページに収まるか確認
+  if (currentY + bodyHeightMm > pageHeight - margin) {
+    pdf.addPage()
+    currentY = margin
+  }
+
+  const bodyImg = bodyCanvas.toDataURL('image/png')
+  pdf.addImage(bodyImg, 'PNG', margin, currentY, contentWidth, bodyHeightMm)
+
+  return currentY + bodyHeightMm + 5
+}
+
+/**
+ * 写真とコメントを描画
+ */
+function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, pageHeight) {
   const photoComments = report.photoComments || []
-  // 写真のインデックスとコメントの対応を保持
   const photoDataWithComments = []
   for (let i = 0; i < report.photos.length; i++) {
     if (report.photos[i] !== null) {
@@ -132,84 +158,61 @@ export async function generatePDF(report) {
     }
   }
 
-  if (photoDataWithComments.length > 0) {
-    if (currentY + 10 > pageHeight - margin) {
+  if (photoDataWithComments.length === 0) return currentY
+
+  if (currentY + 10 > pageHeight - margin) {
+    pdf.addPage()
+    currentY = margin
+  }
+  currentY += 5
+
+  const layout = getPhotoLayout(photoDataWithComments.length, contentWidth)
+  const commentHeightMm = 7
+
+  for (let i = 0; i < photoDataWithComments.length; i++) {
+    const { photo, comment } = photoDataWithComments[i]
+    const pos = layout.positions[i]
+    const extraTop = comment ? commentHeightMm : 0
+    const photoY = currentY + pos.y + extraTop
+
+    // 新しいページが必要か確認
+    if (photoY + pos.h > pageHeight - margin) {
       pdf.addPage()
       currentY = margin
     }
-    currentY += 5
 
-    const layout = getPhotoLayout(photoDataWithComments.length, contentWidth)
-    const commentHeight = 6 // コメント用の高さ (mm)
+    // コメントを写真の上に描画
+    if (comment) {
+      const commentWidthPx = pos.w * pxPerMm
+      const commentHeightPx = commentHeightMm * pxPerMm
+      const commentCanvas = document.createElement('canvas')
+      commentCanvas.width = commentWidthPx
+      commentCanvas.height = commentHeightPx
+      const cCtx = commentCanvas.getContext('2d')
 
-    for (let i = 0; i < photoDataWithComments.length; i++) {
-      const { photo, comment } = photoDataWithComments[i]
-      const pos = layout.positions[i]
-      const extraTop = comment ? commentHeight : 0
-      const photoY = currentY + pos.y + extraTop
+      cCtx.fillStyle = '#ffffff'
+      cCtx.fillRect(0, 0, commentCanvas.width, commentCanvas.height)
+      cCtx.font = `${11 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
+      cCtx.fillStyle = '#444444'
+      cCtx.textAlign = 'left'
+      cCtx.fillText(comment, 2 * dpi, commentHeightPx * 0.7)
 
-      // 新しいページが必要か確認
-      if (photoY + pos.h > pageHeight - margin) {
-        pdf.addPage()
-        currentY = margin
-      }
-
-      // コメントを写真の上に描画
-      if (comment) {
-        const commentCanvas = document.createElement('canvas')
-        const commentWidthPx = pos.w * pxPerMm
-        commentCanvas.width = commentWidthPx
-        commentCanvas.height = commentHeight * pxPerMm
-        const cCtx = commentCanvas.getContext('2d')
-        cCtx.fillStyle = '#ffffff'
-        cCtx.fillRect(0, 0, commentCanvas.width, commentCanvas.height)
-        cCtx.font = `${11 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
-        cCtx.fillStyle = '#555555'
-        cCtx.textAlign = 'left'
-        cCtx.fillText(comment, 2 * dpi, commentHeight * pxPerMm * 0.7)
-
-        const commentImg = commentCanvas.toDataURL('image/png')
-        pdf.addImage(commentImg, 'PNG', margin + pos.x, currentY + pos.y, pos.w, commentHeight)
-      }
-
-      try {
-        pdf.addImage(
-          photo,
-          'JPEG',
-          margin + pos.x,
-          photoY,
-          pos.w,
-          pos.h
-        )
-      } catch (error) {
-        pdf.setDrawColor(200, 200, 200)
-        pdf.rect(margin + pos.x, photoY, pos.w, pos.h)
-      }
+      const commentImg = commentCanvas.toDataURL('image/png')
+      pdf.addImage(commentImg, 'PNG', margin + pos.x, currentY + pos.y, pos.w, commentHeightMm)
     }
 
-    // コメントがある写真分の余白も考慮
-    const hasAnyComment = photoDataWithComments.some(p => p.comment)
-    currentY += layout.totalHeight + (hasAnyComment ? commentHeight : 0)
+    try {
+      pdf.addImage(photo, 'JPEG', margin + pos.x, photoY, pos.w, pos.h)
+    } catch (error) {
+      pdf.setDrawColor(200, 200, 200)
+      pdf.rect(margin + pos.x, photoY, pos.w, pos.h)
+    }
   }
 
-  // --- フッター ---
-  const pageCount = pdf.getNumberOfPages()
-  for (let i = 1; i <= pageCount; i++) {
-    pdf.setPage(i)
-    pdf.setFontSize(8)
-    pdf.setTextColor(150, 150, 150)
-    pdf.text(
-      `${i} / ${pageCount}`,
-      pageWidth / 2,
-      pageHeight - 8,
-      { align: 'center' }
-    )
-    pdf.setTextColor(0, 0, 0)
-  }
+  const hasAnyComment = photoDataWithComments.some(p => p.comment)
+  currentY += layout.totalHeight + (hasAnyComment ? commentHeightMm : 0)
 
-  // ダウンロード
-  const filename = `report_${report.date}_${report.title || 'untitled'}.pdf`
-  pdf.save(filename)
+  return currentY
 }
 
 /**

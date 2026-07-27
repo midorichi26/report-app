@@ -4,7 +4,7 @@ import PrintModal from './PrintModal.jsx'
 import { generatePDF } from '../utils/pdfGenerator.js'
 
 function ReportEditor({ report, onSave, onBack }) {
-  const [formData, setFormData] = useState({ ...report })
+  const [formData, setFormData] = useState({ ...report, photoComments: report.photoComments || Array(report.photoCount).fill(null) })
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const reportRef = useRef(null)
@@ -17,6 +17,12 @@ function ReportEditor({ report, onSave, onBack }) {
     const newPhotos = [...formData.photos]
     newPhotos[index] = dataUrl
     setFormData(prev => ({ ...prev, photos: newPhotos }))
+  }
+
+  const handlePhotoCommentChange = (index, value) => {
+    const newComments = [...(formData.photoComments || Array(formData.photoCount).fill(null))]
+    newComments[index] = value
+    setFormData(prev => ({ ...prev, photoComments: newComments }))
   }
 
   const handleSave = () => {
@@ -97,6 +103,8 @@ function ReportEditor({ report, onSave, onBack }) {
           photos={formData.photos}
           photoCount={formData.photoCount}
           onPhotoChange={handlePhotoChange}
+          photoComments={formData.photoComments}
+          onPhotoCommentChange={handlePhotoCommentChange}
         />
       </div>
 

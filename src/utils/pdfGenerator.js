@@ -120,30 +120,61 @@ export async function generatePDF(report) {
 
   // --- 写真 ---
   const photos = report.photos.filter(p => p !== null)
-  if (photos.length > 0) {
-    // 写真セクションのラベル
+  const photoComments = report.photoComments || []
+  // 写真のインデックスとコメントの対応を保持
+  const photoDataWithComments = []
+  for (let i = 0; i < report.photos.length; i++) {
+    if (report.photos[i] !== null) {
+      photoDataWithComments.push({
+        photo: report.photos[i],
+        comment: photoComments[i] || null,
+      })
+    }
+  }
+
+  if (photoDataWithComments.length > 0) {
     if (currentY + 10 > pageHeight - margin) {
       pdf.addPage()
       currentY = margin
     }
     currentY += 5
 
-    const layout = getPhotoLayout(photos.length, contentWidth)
+    const layout = getPhotoLayout(photoDataWithComments.length, contentWidth)
+    const commentHeight = 6 // コメント用の高さ (mm)
 
-    for (let i = 0; i < photos.length; i++) {
+    for (let i = 0; i < photoDataWithComments.length; i++) {
+      const { photo, comment } = photoDataWithComments[i]
       const pos = layout.positions[i]
-      const photoY = currentY + pos.y
+      const extraTop = comment ? commentHeight : 0
+      const photoY = currentY + pos.y + extraTop
 
       // 新しいページが必要か確認
       if (photoY + pos.h > pageHeight - margin) {
         pdf.addPage()
         currentY = margin
-        // レイアウトを再計算（新ページでは最初から配置）
+      }
+
+      // コメントを写真の上に描画
+      if (comment) {
+        const commentCanvas = document.createElement('canvas')
+        const commentWidthPx = pos.w * pxPerMm
+        commentCanvas.width = commentWidthPx
+        commentCanvas.height = commentHeight * pxPerMm
+        const cCtx = commentCanvas.getContext('2d')
+        cCtx.fillStyle = '#ffffff'
+        cCtx.fillRect(0, 0, commentCanvas.width, commentCanvas.height)
+        cCtx.font = `${11 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
+        cCtx.fillStyle = '#555555'
+        cCtx.textAlign = 'left'
+        cCtx.fillText(comment, 2 * dpi, commentHeight * pxPerMm * 0.7)
+
+        const commentImg = commentCanvas.toDataURL('image/png')
+        pdf.addImage(commentImg, 'PNG', margin + pos.x, currentY + pos.y, pos.w, commentHeight)
       }
 
       try {
         pdf.addImage(
-          photos[i],
+          photo,
           'JPEG',
           margin + pos.x,
           photoY,
@@ -151,13 +182,14 @@ export async function generatePDF(report) {
           pos.h
         )
       } catch (error) {
-        // 画像追加に失敗した場合はプレースホルダー
         pdf.setDrawColor(200, 200, 200)
         pdf.rect(margin + pos.x, photoY, pos.w, pos.h)
       }
     }
 
-    currentY += layout.totalHeight
+    // コメントがある写真分の余白も考慮
+    const hasAnyComment = photoDataWithComments.some(p => p.comment)
+    currentY += layout.totalHeight + (hasAnyComment ? commentHeight : 0)
   }
 
   // --- フッター ---

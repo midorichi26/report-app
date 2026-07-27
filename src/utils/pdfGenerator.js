@@ -20,41 +20,44 @@ export async function generatePDF(report) {
   // --- ヘッダー部分をCanvasで描画 ---
   const headerCanvas = document.createElement('canvas')
   headerCanvas.width = canvasWidthPx
-  headerCanvas.height = 200 * dpi
+  headerCanvas.height = 400 * dpi
   const hCtx = headerCanvas.getContext('2d')
 
   hCtx.fillStyle = '#ffffff'
   hCtx.fillRect(0, 0, headerCanvas.width, headerCanvas.height)
 
-  let hY = 30 * dpi
+  let hY = 40 * dpi
 
-  // タイトル
-  hCtx.font = `bold ${24 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
+  // タイトル（大きめ: 28pt相当）
+  hCtx.font = `bold ${28 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
   hCtx.fillStyle = '#1a1a1a'
   hCtx.textAlign = 'center'
   hCtx.fillText(report.title || '報告書', headerCanvas.width / 2, hY)
-  hY += 15 * dpi
+  hY += 20 * dpi
 
   // 区切り線
   hCtx.strokeStyle = '#4285F4'
-  hCtx.lineWidth = 2 * dpi
+  hCtx.lineWidth = 3 * dpi
   hCtx.beginPath()
   hCtx.moveTo(0, hY)
   hCtx.lineTo(headerCanvas.width, hY)
   hCtx.stroke()
-  hY += 20 * dpi
+  hY += 25 * dpi
 
-  // メタ情報
-  hCtx.font = `${14 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
-  hCtx.fillStyle = '#555555'
+  // 日付（大きめ: 16pt相当）
+  hCtx.font = `${16 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
+  hCtx.fillStyle = '#333333'
   hCtx.textAlign = 'left'
-  hCtx.fillText(`日付: ${report.date}    |    利用者: ${report.author || '-'}`, 10 * dpi, hY)
-  hY += 20 * dpi
+  hCtx.fillText(`日付: ${report.date || '-'}`, 10 * dpi, hY)
+  hY += 18 * dpi
+
+  // 利用者名（大きめ: 16pt相当）
+  hCtx.fillText(`利用者: ${report.author || '-'}`, 10 * dpi, hY)
+  hY += 25 * dpi
 
   // ヘッダー画像をPDFに追加
   const headerHeight = hY / pxPerMm
   headerCanvas.height = hY
-  // Canvasを再描画（高さ調整後）
   const headerImg = headerCanvas.toDataURL('image/png')
   pdf.addImage(headerImg, 'PNG', margin, margin, contentWidth, headerHeight)
 
@@ -62,8 +65,8 @@ export async function generatePDF(report) {
 
   // --- 本文 ---
   if (report.body) {
-    const bodyLines = wrapText(report.body, 40) // 1行あたり約40文字
-    const lineHeight = 7 // mm
+    const bodyLines = wrapText(report.body, 35) // 1行あたり約35文字（大きめフォント用）
+    const lineHeight = 9 // mm（行間を広めに）
     const bodyCanvasHeight = (bodyLines.length + 1) * lineHeight * pxPerMm
 
     const bodyCanvas = document.createElement('canvas')
@@ -73,7 +76,7 @@ export async function generatePDF(report) {
 
     bCtx.fillStyle = '#ffffff'
     bCtx.fillRect(0, 0, bodyCanvas.width, bodyCanvas.height)
-    bCtx.font = `${13 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
+    bCtx.font = `${15 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
     bCtx.fillStyle = '#333333'
     bCtx.textAlign = 'left'
 
@@ -92,7 +95,7 @@ export async function generatePDF(report) {
     const bCtx2 = bodyCanvas.getContext('2d')
     bCtx2.fillStyle = '#ffffff'
     bCtx2.fillRect(0, 0, bodyCanvas.width, bodyCanvas.height)
-    bCtx2.font = `${13 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
+    bCtx2.font = `${15 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
     bCtx2.fillStyle = '#333333'
     bCtx2.textAlign = 'left'
 

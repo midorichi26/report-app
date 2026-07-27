@@ -92,7 +92,8 @@ function drawHeader(pdf, report, margin, currentY, contentWidth, canvasWidthPx, 
   y += 18 * dpi
 
   // 利用者名（16pt相当）
-  ctx.fillText(`利用者: ${report.author || '-'}`, 10 * dpi, y)
+  const authorDisplay = report.author ? `${report.author}様` : '-'
+  ctx.fillText(`利用者: ${authorDisplay}`, 10 * dpi, y)
 
   // PDFに追加
   const headerHeightMm = canvasHeight / pxPerMm
@@ -169,50 +170,106 @@ function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, p
   const layout = getPhotoLayout(photoDataWithComments.length, contentWidth)
   const commentHeightMm = 7
 
+  // 各行ごとにコメント有無を判定し、行全体にコメント分のオフセットを適用
+  // まず、同じY座標（同じ行）の写真をグループ化する
+  const rowGroups = []
+  let currentRowY = null
+  let currentGroup = []
+
   for (let i = 0; i < photoDataWithComments.length; i++) {
-    const { photo, comment } = photoDataWithComments[i]
     const pos = layout.positions[i]
-    const extraTop = comment ? commentHeightMm : 0
-    const photoY = currentY + pos.y + extraTop
-
-    // 新しいページが必要か確認
-    if (photoY + pos.h > pageHeight - margin) {
-      pdf.addPage()
-      currentY = margin
-    }
-
-    // コメントを写真の上に描画
-    if (comment) {
-      const commentWidthPx = pos.w * pxPerMm
-      const commentHeightPx = commentHeightMm * pxPerMm
-      const commentCanvas = document.createElement('canvas')
-      commentCanvas.width = commentWidthPx
-      commentCanvas.height = commentHeightPx
-      const cCtx = commentCanvas.getContext('2d')
-
-      cCtx.fillStyle = '#ffffff'
-      cCtx.fillRect(0, 0, commentCanvas.width, commentCanvas.height)
-      cCtx.font = `${11 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
-      cCtx.fillStyle = '#444444'
-      cCtx.textAlign = 'left'
-      cCtx.fillText(comment, 2 * dpi, commentHeightPx * 0.7)
-
-      const commentImg = commentCanvas.toDataURL('image/png')
-      pdf.addImage(commentImg, 'PNG', margin + pos.x, currentY + pos.y, pos.w, commentHeightMm)
-    }
-
-    try {
-      pdf.addImage(photo, 'JPEG', margin + pos.x, photoY, pos.w, pos.h)
-    } catch (error) {
-      pdf.setDrawColor(200, 200, 200)
-      pdf.rect(margin + pos.x, photoY, pos.w, pos.h)
+    if (currentRowY === null || Math.abs(pos.y - currentRowY) > 1) {
+      if (currentGroup.length > 0) {
+        rowGroups.push(currentGroup)
+      }
+      currentGroup = [i]
+      currentRowY = pos.y
+    } else {
+      currentGroup.push(i)
     }
   }
+  if (currentGroup.length > 0) {
+    rowGroups.push(currentGroup)
+  }
 
-  const hasAnyComment = photoDataWithComments.some(p => p.comment)
-  currentY += layout.totalHeight + (hasAnyComment ? commentHeightMm : 0)
+  // 各行ごとに描画し、コメントがある行は行全体にオフセットを追加
+  let offsetY = 0
+
+  for (const group of rowGroups) {
+    // この行にコメントがあるか判定
+    const rowHasComment = group.some(i => photoDataWithComments[i].comment)
+    const rowCommentOffset = rowHasComment ? commentHeightMm : 0
+
+    for (const i of group) {
+      const { photo, comment } = photoDataWithComments[i]
+      const pos = layout.positions[i]
+      const photoY = currentY + pos.y + offsetY + rowCommentOffset
+
+      // 新しいページが必要か確認
+      if (photoY + pos.h > pageHeight - margin) {
+        pdf.addPage()
+        currentY = margin
+        offsetY = -(pos.y)
+        const newPhotoY = currentY + rowCommentOffset
+        
+        // コメントを写真の上に描画
+        if (comment) {
+          drawCommentLabel(pdf, comment, margin + pos.x, currentY, pos.w, commentHeightMm, pxPerMm, dpi)
+        }
+
+        try {
+          pdf.addImage(photo, 'JPEG', margin + pos.x, newPhotoY, pos.w, pos.h)
+        } catch (error) {
+          pdf.setDrawColor(200, 200, 200)
+          pdf.rect(margin + pos.x, newPhotoY, pos.w, pos.h)
+        }
+        continue
+      }
+
+      // コメントを写真の上に描画
+      if (comment) {
+        const commentY = currentY + pos.y + offsetY
+        drawCommentLabel(pdf, comment, margin + pos.x, commentY, pos.w, commentHeightMm, pxPerMm, dpi)
+      }
+
+      try {
+        pdf.addImage(photo, 'JPEG', margin + pos.x, photoY, pos.w, pos.h)
+      } catch (error) {
+        pdf.setDrawColor(200, 200, 200)
+        pdf.rect(margin + pos.x, photoY, pos.w, pos.h)
+      }
+    }
+
+    // この行の分のオフセットを加算
+    offsetY += rowCommentOffset
+  }
+
+  // 全体の高さ更新
+  currentY += layout.totalHeight + offsetY
 
   return currentY
+}
+
+/**
+ * コメントラベルを描画するヘルパー
+ */
+function drawCommentLabel(pdf, comment, x, y, width, height, pxPerMm, dpi) {
+  const commentWidthPx = width * pxPerMm
+  const commentHeightPx = height * pxPerMm
+  const commentCanvas = document.createElement('canvas')
+  commentCanvas.width = commentWidthPx
+  commentCanvas.height = commentHeightPx
+  const cCtx = commentCanvas.getContext('2d')
+
+  cCtx.fillStyle = '#ffffff'
+  cCtx.fillRect(0, 0, commentCanvas.width, commentCanvas.height)
+  cCtx.font = `${11 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
+  cCtx.fillStyle = '#444444'
+  cCtx.textAlign = 'left'
+  cCtx.fillText(comment, 2 * dpi, commentHeightPx * 0.7)
+
+  const commentImg = commentCanvas.toDataURL('image/png')
+  pdf.addImage(commentImg, 'PNG', x, y, width, height)
 }
 
 /**
@@ -244,33 +301,33 @@ function wrapText(text, charsPerLine) {
  * 写真のレイアウト位置を計算
  */
 function getPhotoLayout(count, availableWidth) {
-  const gap = 3
+  const gap = 2
   const positions = []
   let totalHeight = 0
 
   switch (count) {
     case 1: {
-      const w = Math.min(availableWidth, 160)
-      const h = w * 0.65
+      const w = Math.min(availableWidth, 140)
+      const h = w * 0.6
       positions.push({ x: (availableWidth - w) / 2, y: 0, w, h })
       totalHeight = h
       break
     }
     case 2: {
       const w = (availableWidth - gap) / 2
-      const h = w * 0.65
+      const h = w * 0.6
       positions.push({ x: 0, y: 0, w, h })
       positions.push({ x: w + gap, y: 0, w, h })
       totalHeight = h
       break
     }
     case 3: {
-      const w1 = availableWidth * 0.6
-      const h1 = w1 * 0.6
+      const w1 = availableWidth * 0.55
+      const h1 = w1 * 0.55
       positions.push({ x: (availableWidth - w1) / 2, y: 0, w: w1, h: h1 })
 
       const w2 = (availableWidth - gap) / 2
-      const h2 = w2 * 0.55
+      const h2 = w2 * 0.5
       positions.push({ x: 0, y: h1 + gap, w: w2, h: h2 })
       positions.push({ x: w2 + gap, y: h1 + gap, w: w2, h: h2 })
       totalHeight = h1 + gap + h2
@@ -278,7 +335,7 @@ function getPhotoLayout(count, availableWidth) {
     }
     case 4: {
       const w = (availableWidth - gap) / 2
-      const h = w * 0.6
+      const h = w * 0.55
       positions.push({ x: 0, y: 0, w, h })
       positions.push({ x: w + gap, y: 0, w, h })
       positions.push({ x: 0, y: h + gap, w, h })
@@ -288,12 +345,12 @@ function getPhotoLayout(count, availableWidth) {
     }
     case 5: {
       const w2 = (availableWidth - gap) / 2
-      const h2 = w2 * 0.55
+      const h2 = w2 * 0.5
       positions.push({ x: 0, y: 0, w: w2, h: h2 })
       positions.push({ x: w2 + gap, y: 0, w: w2, h: h2 })
 
       const w3 = (availableWidth - gap * 2) / 3
-      const h3 = w3 * 0.6
+      const h3 = w3 * 0.55
       positions.push({ x: 0, y: h2 + gap, w: w3, h: h3 })
       positions.push({ x: w3 + gap, y: h2 + gap, w: w3, h: h3 })
       positions.push({ x: (w3 + gap) * 2, y: h2 + gap, w: w3, h: h3 })
@@ -302,7 +359,7 @@ function getPhotoLayout(count, availableWidth) {
     }
     case 6: {
       const w = (availableWidth - gap * 2) / 3
-      const h = w * 0.6
+      const h = w * 0.55
       for (let row = 0; row < 2; row++) {
         for (let col = 0; col < 3; col++) {
           positions.push({
@@ -318,7 +375,7 @@ function getPhotoLayout(count, availableWidth) {
     }
     default: {
       const w = (availableWidth - gap) / 2
-      const h = w * 0.6
+      const h = w * 0.55
       for (let i = 0; i < count; i++) {
         const row = Math.floor(i / 2)
         const col = i % 2

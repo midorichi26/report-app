@@ -122,7 +122,7 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange }) {
 
       {/* 写真スロット */}
       <div
-        className="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors bg-gray-50 aspect-[4/3]"
+        className="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors bg-gray-50 aspect-[3/2]"
         onClick={handleSlotClick}
       >
         {photo ? (

@@ -6,7 +6,7 @@ const printServices = [
     description: 'かんたんnetprintアプリでPDFを登録して、セブンイレブンで印刷',
     icon: '🏪',
     appUrl: {
-      ios: 'https://apps.apple.com/jp/app/id1552990335',
+      ios: 'https://apps.apple.com/jp/app/id1552990358',
       android: 'https://play.google.com/store/apps/details?id=jp.co.fujixerox.np.kantan.android',
     },
     steps: [
@@ -22,7 +22,7 @@ const printServices = [
     description: 'ネットワークプリントアプリでPDFを登録して印刷',
     icon: '🏬',
     appUrl: {
-      ios: 'https://apps.apple.com/jp/app/id1095899498',
+      ios: 'https://apps.apple.com/jp/app/id454644833',
       android: 'https://play.google.com/store/apps/details?id=jp.co.sharp.networkprint',
     },
     steps: [

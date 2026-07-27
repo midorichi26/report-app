@@ -6,8 +6,8 @@ const printServices = [
     description: 'かんたんnetprintアプリでPDFを登録して、セブンイレブンで印刷',
     icon: '🏪',
     appUrl: {
-      ios: 'https://apps.apple.com/jp/app/id1552990358',
-      android: 'https://play.google.com/store/apps/details?id=jp.co.fujixerox.np.kantan.android',
+      ios: 'https://apps.apple.com/jp/app/id1552990335',
+      android: 'https://play.google.com/store/apps/details?id=com.fujifilm.fb.netprint.kantan',
     },
     steps: [
       '下の「PDF保存」ボタンでPDFをスマホに保存',

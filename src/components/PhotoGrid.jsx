@@ -16,7 +16,9 @@ function PhotoGrid({ photos, photoCount, onPhotoChange }) {
 }
 
 function PhotoSlot({ index, photo, onPhotoChange }) {
-  const fileInputRef = useRef(null)
+  const cameraInputRef = useRef(null)
+  const galleryInputRef = useRef(null)
+  const [showMenu, setShowMenu] = React.useState(false)
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0]
@@ -49,6 +51,7 @@ function PhotoSlot({ index, photo, onPhotoChange }) {
       img.src = event.target.result
     }
     reader.readAsDataURL(file)
+    setShowMenu(false)
   }
 
   const handleRemove = (e) => {
@@ -56,10 +59,28 @@ function PhotoSlot({ index, photo, onPhotoChange }) {
     onPhotoChange(index, null)
   }
 
+  const handleSlotClick = () => {
+    if (!photo) {
+      setShowMenu(true)
+    }
+  }
+
+  const handleCamera = (e) => {
+    e.stopPropagation()
+    setShowMenu(false)
+    cameraInputRef.current?.click()
+  }
+
+  const handleGallery = (e) => {
+    e.stopPropagation()
+    setShowMenu(false)
+    galleryInputRef.current?.click()
+  }
+
   return (
     <div
       className="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors bg-gray-50 aspect-[4/3]"
-      onClick={() => fileInputRef.current?.click()}
+      onClick={handleSlotClick}
     >
       {photo ? (
         <>
@@ -75,6 +96,13 @@ function PhotoSlot({ index, photo, onPhotoChange }) {
           >
             ×
           </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowMenu(true) }}
+            className="absolute bottom-1 right-1 bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-blue-600"
+            aria-label="写真を変更"
+          >
+            ↻
+          </button>
           <div className="absolute bottom-1 left-1 bg-black/50 text-white text-xs px-2 py-0.5 rounded">
             {index + 1}
           </div>
@@ -86,11 +114,48 @@ function PhotoSlot({ index, photo, onPhotoChange }) {
           <span className="text-xs mt-1">タップして選択</span>
         </div>
       )}
+
+      {/* 選択メニュー */}
+      {showMenu && (
+        <div
+          className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3 z-10"
+          onClick={(e) => { e.stopPropagation(); setShowMenu(false) }}
+        >
+          <button
+            onClick={handleCamera}
+            className="bg-white text-gray-800 font-medium px-5 py-2.5 rounded-lg shadow-lg text-sm hover:bg-gray-100 transition-colors w-40"
+          >
+            📷 カメラで撮影
+          </button>
+          <button
+            onClick={handleGallery}
+            className="bg-white text-gray-800 font-medium px-5 py-2.5 rounded-lg shadow-lg text-sm hover:bg-gray-100 transition-colors w-40"
+          >
+            🖼️ ギャラリーから選択
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowMenu(false) }}
+            className="text-white text-sm mt-1 underline"
+          >
+            キャンセル
+          </button>
+        </div>
+      )}
+
+      {/* カメラ用input */}
       <input
-        ref={fileInputRef}
+        ref={cameraInputRef}
         type="file"
         accept="image/*"
         capture="environment"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+      {/* ギャラリー用input（captureなし） */}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
         onChange={handleFileSelect}
         className="hidden"
       />

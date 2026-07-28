@@ -75,20 +75,16 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
     const item = items[index]
 
     // タッチ位置が記号のどのエリアかで操作を自動決定
-    // 記号の中心からの相対位置で判定
-    const relX = (pos.x - item.x) / (item.width / 2)  // -1 ~ 1
-    const relY = (pos.y - item.y) / (item.height / 2) // -1 ~ 1
+    const relX = (pos.x - item.x) / (item.width / 2)
+    const relY = (pos.y - item.y) / (item.height / 2)
     const dist = Math.sqrt(relX * relX + relY * relY)
 
     let autoMode
     if (dist < 0.5) {
-      // 中央付近 → 移動
       autoMode = 'move'
     } else if (relX > 0.3 && relY < -0.3) {
-      // 右上エリア → 回転
       autoMode = 'rotate'
     } else {
-      // 外側エリア → サイズ変更
       autoMode = 'resize'
     }
 
@@ -96,6 +92,15 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
     setMode(autoMode)
     setStartPos(pos)
     setStartItem({ ...item })
+  }
+
+  const handleRotateStart = (e, index) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setActiveIndex(index)
+    setMode('rotate')
+    setStartPos(getPosition(e))
+    setStartItem({ ...items[index] })
   }
 
   const handlePointerMove = (e) => {
@@ -179,6 +184,16 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         >
           ×
         </button>
+
+        {/* 回転ハンドル（右上） */}
+        <div
+          className="absolute -top-2 -right-2 w-7 h-7 bg-white border-2 border-green-500 rounded-full cursor-crosshair flex items-center justify-center"
+          onMouseDown={(e) => handleRotateStart(e, index)}
+          onTouchStart={(e) => handleRotateStart(e, index)}
+          style={{ touchAction: 'none', fontSize: '14px' }}
+        >
+          ↻
+        </div>
       </div>
     )
   }

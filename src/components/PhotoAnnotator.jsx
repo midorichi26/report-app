@@ -15,12 +15,18 @@ const SIZES = [
   { label: 'L', value: 11 },
   { label: 'XL', value: 16 },
 ]
+const STROKES = [
+  { label: '細', value: 3 },
+  { label: '中', value: 6 },
+  { label: '太', value: 10 },
+]
 
 function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   const [items, setItems] = useState(annotations)
   const [selectedType, setSelectedType] = useState('arrow')
   const [selectedColor, setSelectedColor] = useState('#FF0000')
-  const [selectedSize, setSelectedSize] = useState(18)
+  const [selectedSize, setSelectedSize] = useState(7)
+  const [selectedStroke, setSelectedStroke] = useState(6)
   const [activeIndex, setActiveIndex] = useState(null)
   const [mode, setMode] = useState(null) // 'move', 'resize', or 'rotate'
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })
@@ -36,6 +42,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
       width: selectedSize * 2,
       height: selectedSize * 1.5,
       rotation: 0,
+      stroke: selectedStroke,
     }
     setItems([...items, newItem])
   }
@@ -192,7 +199,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   }
 
   const renderShape = (item) => {
-    const strokeWidth = 5
+    const strokeWidth = item.stroke || 5
     switch (item.type) {
       case 'arrow':
         return (
@@ -239,7 +246,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         ))}
       </div>
 
-      {/* 色 + サイズ + 追加 */}
+      {/* 色 + サイズ + 太さ + 追加 */}
       <div className="bg-white px-2 pb-2 flex flex-wrap items-center gap-2 border-b">
         <span className="text-xs font-medium text-gray-700">色:</span>
         {COLORS.map((color) => (
@@ -264,6 +271,20 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
             }`}
           >
             {size.label}
+          </button>
+        ))}
+        <span className="text-xs font-medium text-gray-700 ml-2">太さ:</span>
+        {STROKES.map((s) => (
+          <button
+            key={s.value}
+            onClick={() => setSelectedStroke(s.value)}
+            className={`px-2 py-0.5 rounded text-xs border ${
+              selectedStroke === s.value
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-gray-100 text-gray-700 border-gray-300'
+            }`}
+          >
+            {s.label}
           </button>
         ))}
         <button

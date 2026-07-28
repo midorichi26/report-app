@@ -190,6 +190,7 @@ function drawBody(pdf, body, margin, currentY, contentWidth, canvasWidthPx, pxPe
 async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, pageHeight) {
   const photoComments = report.photoComments || []
   const photoAnnotations = report.photoAnnotations || []
+  const photoDateStamps = report.photoDateStamps || []
   const photoDataWithComments = []
   for (let i = 0; i < report.photos.length; i++) {
     if (report.photos[i] !== null) {
@@ -197,6 +198,7 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
         photo: report.photos[i],
         comment: photoComments[i] || null,
         annotations: photoAnnotations[i] || [],
+        dateStamp: photoDateStamps[i] || null,
       })
     }
   }
@@ -245,7 +247,7 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
     const rowCommentOffset = rowHasComment ? commentHeightMm : 0
 
     for (const i of group) {
-      const { photo, comment, annotations } = photoDataWithComments[i]
+      const { photo, comment, annotations, dateStamp } = photoDataWithComments[i]
       const pos = layout.positions[i]
       const photoY = currentY + pos.y + offsetY + rowCommentOffset
 
@@ -268,8 +270,8 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
             drawAnnotationsOnPhoto(pdf, annotations, margin + pos.x + fitted.offsetX, newPhotoY + fitted.offsetY, fitted.w, fitted.h)
           }
           // 日付スタンプ
-          if (report.dateStamp && report.dateStamp.text) {
-            drawDateStamp(pdf, report.dateStamp, margin + pos.x + fitted.offsetX, newPhotoY + fitted.offsetY, fitted.w, fitted.h, pxPerMm, dpi)
+          if (dateStamp && dateStamp.text) {
+            drawDateStamp(pdf, dateStamp, margin + pos.x + fitted.offsetX, newPhotoY + fitted.offsetY, fitted.w, fitted.h, pxPerMm, dpi)
           }
         } catch (error) {
           pdf.setDrawColor(200, 200, 200)
@@ -291,8 +293,8 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
           drawAnnotationsOnPhoto(pdf, annotations, margin + pos.x + fitted.offsetX, photoY + fitted.offsetY, fitted.w, fitted.h)
         }
         // 日付スタンプ
-        if (report.dateStamp && report.dateStamp.text) {
-          drawDateStamp(pdf, report.dateStamp, margin + pos.x + fitted.offsetX, photoY + fitted.offsetY, fitted.w, fitted.h, pxPerMm, dpi)
+        if (dateStamp && dateStamp.text) {
+          drawDateStamp(pdf, dateStamp, margin + pos.x + fitted.offsetX, photoY + fitted.offsetY, fitted.w, fitted.h, pxPerMm, dpi)
         }
       } catch (error) {
         pdf.setDrawColor(200, 200, 200)

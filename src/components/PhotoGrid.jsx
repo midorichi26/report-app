@@ -1,7 +1,7 @@
 import React, { useRef } from 'react'
 import PhotoAnnotator from './PhotoAnnotator.jsx'
 
-function PhotoGrid({ photos, photoCount, onPhotoChange, photoComments, onPhotoCommentChange, photoAnnotations, onPhotoAnnotationsChange, dateStamp, onDateStampChange }) {
+function PhotoGrid({ photos, photoCount, onPhotoChange, photoComments, onPhotoCommentChange, photoAnnotations, onPhotoAnnotationsChange, photoDateStamps, onPhotoDateStampChange }) {
   return (
     <div className={getGridClass(photoCount)}>
       {photos.map((photo, index) => (
@@ -14,8 +14,8 @@ function PhotoGrid({ photos, photoCount, onPhotoChange, photoComments, onPhotoCo
           onCommentChange={onPhotoCommentChange}
           annotations={photoAnnotations?.[index] || []}
           onAnnotationsChange={onPhotoAnnotationsChange}
-          dateStamp={dateStamp}
-          onDateStampChange={onDateStampChange}
+          dateStamp={photoDateStamps?.[index] || null}
+          onDateStampChange={onPhotoDateStampChange}
         />
       ))}
     </div>
@@ -28,6 +28,8 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
   const [showMenu, setShowMenu] = React.useState(false)
   const [showAnnotator, setShowAnnotator] = React.useState(false)
   const [isDraggingStamp, setIsDraggingStamp] = React.useState(false)
+  const [editingDate, setEditingDate] = React.useState(false)
+  const [editDateText, setEditDateText] = React.useState('')
   const slotRef = useRef(null)
 
   const handleFileSelect = (e) => {
@@ -134,22 +136,22 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
         className="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors bg-gray-50 aspect-[3/2]"
         onClick={handleSlotClick}
         onMouseMove={(e) => {
-          if (!isDraggingStamp || !slotRef.current) return
+          if (!isDraggingStamp || !slotRef.current || !dateStamp) return
           const rect = slotRef.current.getBoundingClientRect()
           const x = ((e.clientX - rect.left) / rect.width) * 100
           const y = ((e.clientY - rect.top) / rect.height) * 100
-          onDateStampChange({ ...dateStamp, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) })
+          onDateStampChange(index, { ...dateStamp, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) })
         }}
         onMouseUp={() => setIsDraggingStamp(false)}
         onMouseLeave={() => setIsDraggingStamp(false)}
         onTouchMove={(e) => {
-          if (!isDraggingStamp || !slotRef.current) return
+          if (!isDraggingStamp || !slotRef.current || !dateStamp) return
           e.preventDefault()
           const rect = slotRef.current.getBoundingClientRect()
           const touch = e.touches[0]
           const x = ((touch.clientX - rect.left) / rect.width) * 100
           const y = ((touch.clientY - rect.top) / rect.height) * 100
-          onDateStampChange({ ...dateStamp, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) })
+          onDateStampChange(index, { ...dateStamp, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) })
         }}
         onTouchEnd={() => setIsDraggingStamp(false)}
       >
@@ -205,8 +207,56 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
                   e.stopPropagation()
                   setIsDraggingStamp(true)
                 }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (!isDraggingStamp) {
+                    setEditDateText(dateStamp.text)
+                    setEditingDate(true)
+                  }
+                }}
               >
                 {dateStamp.text}
+              </div>
+            )}
+            {/* 日付個別編集ポップアップ */}
+            {editingDate && dateStamp && (
+              <div
+                className="absolute top-1 left-1 right-1 bg-white rounded-lg shadow-lg p-2 z-30"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <input
+                  type="text"
+                  value={editDateText}
+                  onChange={(e) => setEditDateText(e.target.value)}
+                  className="input-field text-xs mb-1"
+                  autoFocus
+                />
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => {
+                      onDateStampChange(index, { ...dateStamp, text: editDateText })
+                      setEditingDate(false)
+                    }}
+                    className="bg-blue-600 text-white px-2 py-0.5 rounded text-xs flex-1"
+                  >
+                    OK
+                  </button>
+                  <button
+                    onClick={() => {
+                      onDateStampChange(index, null)
+                      setEditingDate(false)
+                    }}
+                    className="bg-red-500 text-white px-2 py-0.5 rounded text-xs"
+                  >
+                    削除
+                  </button>
+                  <button
+                    onClick={() => setEditingDate(false)}
+                    className="bg-gray-300 text-gray-700 px-2 py-0.5 rounded text-xs"
+                  >
+                    取消
+                  </button>
+                </div>
               </div>
             )}
             <button

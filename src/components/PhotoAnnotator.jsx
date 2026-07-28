@@ -21,8 +21,6 @@ const STROKES = [
   { label: '太', value: 10 },
 ]
 
-const EDIT_MODES = [] // 不要になったが互換性のために残す
-
 function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   const [items, setItems] = useState(annotations)
   const [selectedType, setSelectedType] = useState('arrow')
@@ -30,9 +28,11 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   const [selectedSize, setSelectedSize] = useState(7)
   const [selectedStroke, setSelectedStroke] = useState(6)
   const [activeIndex, setActiveIndex] = useState(null)
-  const [mode, setMode] = useState(null) // 'move', 'resize', or 'rotate'
+  const [editingIndex, setEditingIndex] = useState(null)
+  const [mode, setMode] = useState(null)
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })
   const [startItem, setStartItem] = useState(null)
+  const [hasDragged, setHasDragged] = useState(false)
   const containerRef = useRef(null)
 
   const addAnnotation = () => {
@@ -51,6 +51,13 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
 
   const removeAnnotation = (index) => {
     setItems(items.filter((_, i) => i !== index))
+    if (editingIndex === index) setEditingIndex(null)
+  }
+
+  const updateAnnotation = (index, updates) => {
+    const updated = [...items]
+    updated[index] = { ...updated[index], ...updates }
+    setItems(updated)
   }
 
   const getPosition = (e) => {
@@ -74,7 +81,6 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
     const pos = getPosition(e)
     const item = items[index]
 
-    // タッチ位置が記号のどのエリアかで操作を自動決定
     const relX = (pos.x - item.x) / (item.width / 2)
     const relY = (pos.y - item.y) / (item.height / 2)
     const dist = Math.sqrt(relX * relX + relY * relY)
@@ -92,6 +98,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
     setMode(autoMode)
     setStartPos(pos)
     setStartItem({ ...item })
+    setHasDragged(false)
   }
 
   const handleRotateStart = (e, index) => {
@@ -101,11 +108,13 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
     setMode('rotate')
     setStartPos(getPosition(e))
     setStartItem({ ...items[index] })
+    setHasDragged(false)
   }
 
   const handlePointerMove = (e) => {
     if (activeIndex === null || !startItem) return
     e.preventDefault()
+    setHasDragged(true)
     const pos = getPosition(e)
     const dx = pos.x - startPos.x
     const dy = pos.y - startPos.y
@@ -124,7 +133,6 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         height: Math.max(2, startItem.height + dy),
       }
     } else if (mode === 'rotate') {
-      // 中心からの角度を計算
       const centerX = startItem.x
       const centerY = startItem.y
       const startAngle = Math.atan2(startPos.y - centerY, startPos.x - centerX)
@@ -139,6 +147,10 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   }
 
   const handlePointerUp = () => {
+    // ドラッグしなかった場合はタップとみなし、編集パネルを表示
+    if (activeIndex !== null && !hasDragged) {
+      setEditingIndex(activeIndex)
+    }
     setActiveIndex(null)
     setMode(null)
     setStartItem(null)
@@ -150,6 +162,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   }
 
   const renderAnnotation = (item, index) => {
+    const isEditing = editingIndex === index
     const style = {
       position: 'absolute',
       left: `${item.x}%`,
@@ -161,11 +174,11 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
       touchAction: 'none',
       userSelect: 'none',
       zIndex: activeIndex === index ? 20 : 10,
+      outline: isEditing ? '2px solid #3b82f6' : 'none',
     }
 
     return (
       <div key={index} style={style}>
-        {/* メイン記号 - 選択中のモードで操作 */}
         <div
           className="w-full h-full"
           onMouseDown={(e) => handleMoveStart(e, index)}
@@ -176,7 +189,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
           </svg>
         </div>
 
-        {/* 削除ボタン（左上） */}
+        {/* 削除ボタン */}
         <button
           onClick={(e) => { e.stopPropagation(); removeAnnotation(index) }}
           className="absolute -top-2 -left-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold"
@@ -185,7 +198,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
           ×
         </button>
 
-        {/* 回転ハンドル（右上） */}
+        {/* 回転ハンドル */}
         <div
           className="absolute -top-2 -right-2 w-7 h-7 bg-white border-2 border-green-500 rounded-full cursor-crosshair flex items-center justify-center"
           onMouseDown={(e) => handleRotateStart(e, index)}
@@ -295,6 +308,44 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         </button>
       </div>
 
+      {/* 選択中の記号の編集パネル */}
+      {editingIndex !== null && items[editingIndex] && (
+        <div className="bg-yellow-50 px-2 py-2 flex flex-wrap items-center gap-2 border-b border-yellow-300">
+          <span className="text-xs font-bold text-yellow-800">記号{editingIndex + 1}を編集:</span>
+          <span className="text-xs text-gray-600">色:</span>
+          {COLORS.map((color) => (
+            <button
+              key={color}
+              onClick={() => updateAnnotation(editingIndex, { color })}
+              className={`w-5 h-5 rounded-full border-2 ${
+                items[editingIndex].color === color ? 'border-gray-800 scale-110' : 'border-gray-300'
+              }`}
+              style={{ backgroundColor: color }}
+            />
+          ))}
+          <span className="text-xs text-gray-600 ml-2">太さ:</span>
+          {STROKES.map((s) => (
+            <button
+              key={s.value}
+              onClick={() => updateAnnotation(editingIndex, { stroke: s.value })}
+              className={`px-2 py-0.5 rounded text-xs border ${
+                items[editingIndex].stroke === s.value
+                  ? 'bg-yellow-600 text-white border-yellow-600'
+                  : 'bg-white text-gray-700 border-gray-300'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+          <button
+            onClick={() => setEditingIndex(null)}
+            className="ml-auto text-xs text-gray-500 underline"
+          >
+            閉じる
+          </button>
+        </div>
+      )}
+
       {/* 写真エリア */}
       <div
         ref={containerRef}
@@ -304,6 +355,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         onMouseLeave={handlePointerUp}
         onTouchMove={handlePointerMove}
         onTouchEnd={handlePointerUp}
+        onClick={() => setEditingIndex(null)}
       >
         <img
           src={photo}
@@ -313,7 +365,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         />
         {items.map((item, index) => renderAnnotation(item, index))}
         <p className="absolute bottom-1 left-1 text-white text-xs bg-black/50 px-2 py-0.5 rounded">
-          中央ドラッグ: 移動 / 端ドラッグ: サイズ / 右上ドラッグ: 回転
+          タップ: 編集 / 中央ドラッグ: 移動 / 端ドラッグ: サイズ / ↻: 回転
         </p>
       </div>
 

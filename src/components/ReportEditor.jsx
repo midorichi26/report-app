@@ -8,7 +8,8 @@ function ReportEditor({ report, onSave, onBack }) {
     ...report,
     photoComments: report.photoComments || Array(report.photoCount).fill(null),
     photoAnnotations: report.photoAnnotations || Array(report.photoCount).fill([]),
-    dateStamp: report.dateStamp || { text: '', color: '#FFFFFF', size: 14, x: 80, y: 90 },
+    dateStamp: report.dateStamp || { text: '', color: '#FFFFFF', size: 14 },
+    photoDateStamps: report.photoDateStamps || Array(report.photoCount).fill(null),
   })
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
@@ -135,14 +136,32 @@ function ReportEditor({ report, onSave, onBack }) {
 
         {/* 日付スタンプ設定 */}
         <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-          <label className="block text-sm font-medium text-gray-700 mb-2">📅 写真上の日付（全写真共通）</label>
-          <input
-            type="text"
-            value={formData.dateStamp.text}
-            onChange={(e) => handleChange('dateStamp', { ...formData.dateStamp, text: e.target.value })}
-            placeholder="例: 2026/7/28（空欄で非表示）"
-            className="input-field text-sm mb-2"
-          />
+          <label className="block text-sm font-medium text-gray-700 mb-2">📅 写真上の日付（一括入力）</label>
+          <div className="flex gap-2 mb-2">
+            <input
+              type="text"
+              value={formData.dateStamp.text}
+              onChange={(e) => handleChange('dateStamp', { ...formData.dateStamp, text: e.target.value })}
+              placeholder="例: 2026/7/28（空欄で非表示）"
+              className="input-field text-sm flex-1"
+            />
+            <button
+              onClick={() => {
+                if (!formData.dateStamp.text) return
+                const newStamps = formData.photoDateStamps.map((existing) => ({
+                  text: formData.dateStamp.text,
+                  color: formData.dateStamp.color,
+                  size: formData.dateStamp.size,
+                  x: existing?.x ?? 80,
+                  y: existing?.y ?? 90,
+                }))
+                setFormData(prev => ({ ...prev, photoDateStamps: newStamps }))
+              }}
+              className="bg-blue-600 text-white px-3 py-1 rounded text-sm font-medium whitespace-nowrap"
+            >
+              全写真に反映
+            </button>
+          </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-1">
               <span className="text-xs text-gray-600">色:</span>
@@ -168,7 +187,7 @@ function ReportEditor({ report, onSave, onBack }) {
               ))}
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-1">※ 写真上の日付はドラッグで位置調整できます</p>
+          <p className="text-xs text-gray-500 mt-1">※ 写真上の日付はドラッグで位置調整、タップで個別編集できます</p>
         </div>
 
         <PhotoGrid
@@ -179,8 +198,12 @@ function ReportEditor({ report, onSave, onBack }) {
           onPhotoCommentChange={handlePhotoCommentChange}
           photoAnnotations={formData.photoAnnotations}
           onPhotoAnnotationsChange={handlePhotoAnnotationsChange}
-          dateStamp={formData.dateStamp}
-          onDateStampChange={(stamp) => handleChange('dateStamp', stamp)}
+          photoDateStamps={formData.photoDateStamps}
+          onPhotoDateStampChange={(index, stamp) => {
+            const newStamps = [...formData.photoDateStamps]
+            newStamps[index] = stamp
+            setFormData(prev => ({ ...prev, photoDateStamps: newStamps }))
+          }}
         />
       </div>
 

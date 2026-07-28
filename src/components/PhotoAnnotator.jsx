@@ -1,39 +1,46 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef } from 'react'
 
 const ANNOTATION_TYPES = [
-  { id: 'arrow', label: '→ 矢印', icon: '→' },
-  { id: 'line', label: '― 直線', icon: '―' },
-  { id: 'rect', label: '□ 四角', icon: '□' },
-  { id: 'circle', label: '○ 丸', icon: '○' },
-  { id: 'cross', label: '× バツ', icon: '×' },
+  { id: 'arrow', label: '→ 矢印' },
+  { id: 'line', label: '― 直線' },
+  { id: 'rect', label: '□ 四角' },
+  { id: 'circle', label: '○ 丸' },
+  { id: 'cross', label: '× バツ' },
 ]
 
 const COLORS = ['#FF0000', '#0000FF', '#00AA00', '#FF8800', '#000000']
+const SIZES = [
+  { label: 'S', value: 10 },
+  { label: 'M', value: 18 },
+  { label: 'L', value: 28 },
+  { label: 'XL', value: 40 },
+]
 
 function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   const [items, setItems] = useState(annotations)
   const [selectedType, setSelectedType] = useState('arrow')
   const [selectedColor, setSelectedColor] = useState('#FF0000')
-  const [draggingIndex, setDraggingIndex] = useState(null)
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const [selectedSize, setSelectedSize] = useState(18)
+  const [activeIndex, setActiveIndex] = useState(null)
+  const [mode, setMode] = useState(null) // 'move' or 'resize'
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 })
+  const [startItem, setStartItem] = useState(null)
   const containerRef = useRef(null)
 
   const addAnnotation = () => {
     const newItem = {
       type: selectedType,
       color: selectedColor,
-      x: 50, // パーセント位置
+      x: 50,
       y: 50,
-      rotation: 0,
-      size: selectedType === 'rect' || selectedType === 'circle' ? 20 : 15,
+      width: selectedSize * 2.5,  // パーセント幅
+      height: selectedSize * 1.8, // パーセント高さ
     }
-    const updated = [...items, newItem]
-    setItems(updated)
+    setItems([...items, newItem])
   }
 
   const removeAnnotation = (index) => {
-    const updated = items.filter((_, i) => i !== index)
-    setItems(updated)
+    setItems(items.filter((_, i) => i !== index))
   }
 
   const getPosition = (e) => {
@@ -48,32 +55,55 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
     }
     const x = ((clientX - rect.left) / rect.width) * 100
     const y = ((clientY - rect.top) / rect.height) * 100
-    return { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) }
+    return { x, y }
   }
 
-  const handlePointerDown = (e, index) => {
+  const handleMoveStart = (e, index) => {
     e.preventDefault()
     e.stopPropagation()
-    const pos = getPosition(e)
-    setDraggingIndex(index)
-    setDragOffset({ x: pos.x - items[index].x, y: pos.y - items[index].y })
+    setActiveIndex(index)
+    setMode('move')
+    setStartPos(getPosition(e))
+    setStartItem({ ...items[index] })
+  }
+
+  const handleResizeStart = (e, index) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setActiveIndex(index)
+    setMode('resize')
+    setStartPos(getPosition(e))
+    setStartItem({ ...items[index] })
   }
 
   const handlePointerMove = (e) => {
-    if (draggingIndex === null) return
+    if (activeIndex === null || !startItem) return
     e.preventDefault()
     const pos = getPosition(e)
+    const dx = pos.x - startPos.x
+    const dy = pos.y - startPos.y
     const updated = [...items]
-    updated[draggingIndex] = {
-      ...updated[draggingIndex],
-      x: pos.x - dragOffset.x,
-      y: pos.y - dragOffset.y,
+
+    if (mode === 'move') {
+      updated[activeIndex] = {
+        ...updated[activeIndex],
+        x: Math.max(0, Math.min(100, startItem.x + dx)),
+        y: Math.max(0, Math.min(100, startItem.y + dy)),
+      }
+    } else if (mode === 'resize') {
+      updated[activeIndex] = {
+        ...updated[activeIndex],
+        width: Math.max(5, startItem.width + dx),
+        height: Math.max(3, startItem.height + dy),
+      }
     }
     setItems(updated)
   }
 
   const handlePointerUp = () => {
-    setDraggingIndex(null)
+    setActiveIndex(null)
+    setMode(null)
+    setStartItem(null)
   }
 
   const handleSave = () => {
@@ -86,72 +116,41 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
       position: 'absolute',
       left: `${item.x}%`,
       top: `${item.y}%`,
-      transform: `translate(-50%, -50%) rotate(${item.rotation || 0}deg)`,
-      color: item.color,
-      fontSize: `${item.size || 15}px`,
+      transform: 'translate(-50%, -50%)',
+      width: `${item.width}%`,
+      height: `${item.height}%`,
       cursor: 'grab',
       touchAction: 'none',
       userSelect: 'none',
-      zIndex: draggingIndex === index ? 20 : 10,
-      lineHeight: 1,
-    }
-
-    let content
-    switch (item.type) {
-      case 'arrow':
-        content = (
-          <svg width={item.size * 3} height={item.size * 2} viewBox="0 0 60 40" style={{ overflow: 'visible' }}>
-            <line x1="0" y1="20" x2="45" y2="20" stroke={item.color} strokeWidth="4" />
-            <polygon points="40,10 60,20 40,30" fill={item.color} />
-          </svg>
-        )
-        break
-      case 'line':
-        content = (
-          <svg width={item.size * 3} height={item.size} viewBox="0 0 60 10" style={{ overflow: 'visible' }}>
-            <line x1="0" y1="5" x2="60" y2="5" stroke={item.color} strokeWidth="4" />
-          </svg>
-        )
-        break
-      case 'rect':
-        content = (
-          <svg width={item.size * 2.5} height={item.size * 2} viewBox="0 0 50 40" style={{ overflow: 'visible' }}>
-            <rect x="2" y="2" width="46" height="36" stroke={item.color} strokeWidth="3" fill="none" />
-          </svg>
-        )
-        break
-      case 'circle':
-        content = (
-          <svg width={item.size * 2.5} height={item.size * 2.5} viewBox="0 0 50 50" style={{ overflow: 'visible' }}>
-            <circle cx="25" cy="25" r="22" stroke={item.color} strokeWidth="3" fill="none" />
-          </svg>
-        )
-        break
-      case 'cross':
-        content = (
-          <svg width={item.size * 2} height={item.size * 2} viewBox="0 0 40 40" style={{ overflow: 'visible' }}>
-            <line x1="5" y1="5" x2="35" y2="35" stroke={item.color} strokeWidth="4" />
-            <line x1="35" y1="5" x2="5" y2="35" stroke={item.color} strokeWidth="4" />
-          </svg>
-        )
-        break
-      default:
-        content = <span>{item.type}</span>
+      zIndex: activeIndex === index ? 20 : 10,
     }
 
     return (
-      <div
-        key={index}
-        style={style}
-        onMouseDown={(e) => handlePointerDown(e, index)}
-        onTouchStart={(e) => handlePointerDown(e, index)}
-      >
-        {content}
-        {/* 削除ボタン */}
+      <div key={index} style={style}>
+        {/* メイン記号 - ドラッグで移動 */}
+        <div
+          className="w-full h-full"
+          onMouseDown={(e) => handleMoveStart(e, index)}
+          onTouchStart={(e) => handleMoveStart(e, index)}
+        >
+          <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {renderShape(item)}
+          </svg>
+        </div>
+
+        {/* リサイズハンドル（右下） */}
+        <div
+          className="absolute -bottom-1 -right-1 w-5 h-5 bg-white border-2 border-blue-500 rounded-sm cursor-nwse-resize"
+          onMouseDown={(e) => handleResizeStart(e, index)}
+          onTouchStart={(e) => handleResizeStart(e, index)}
+          style={{ touchAction: 'none' }}
+        />
+
+        {/* 削除ボタン（左上） */}
         <button
           onClick={(e) => { e.stopPropagation(); removeAnnotation(index) }}
-          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs leading-none"
-          style={{ fontSize: '10px' }}
+          className="absolute -top-2 -left-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+          style={{ touchAction: 'none' }}
         >
           ×
         </button>
@@ -159,16 +158,44 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
     )
   }
 
+  const renderShape = (item) => {
+    const strokeWidth = 5
+    switch (item.type) {
+      case 'arrow':
+        return (
+          <>
+            <line x1="5" y1="50" x2="75" y2="50" stroke={item.color} strokeWidth={strokeWidth} />
+            <polygon points="70,30 95,50 70,70" fill={item.color} />
+          </>
+        )
+      case 'line':
+        return <line x1="5" y1="50" x2="95" y2="50" stroke={item.color} strokeWidth={strokeWidth} />
+      case 'rect':
+        return <rect x="5" y="5" width="90" height="90" stroke={item.color} strokeWidth={strokeWidth} fill="none" />
+      case 'circle':
+        return <ellipse cx="50" cy="50" rx="45" ry="45" stroke={item.color} strokeWidth={strokeWidth} fill="none" />
+      case 'cross':
+        return (
+          <>
+            <line x1="10" y1="10" x2="90" y2="90" stroke={item.color} strokeWidth={strokeWidth} />
+            <line x1="90" y1="10" x2="10" y2="90" stroke={item.color} strokeWidth={strokeWidth} />
+          </>
+        )
+      default:
+        return null
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/70 flex flex-col z-50">
-      {/* ツールバー */}
-      <div className="bg-white p-3 flex flex-wrap items-center gap-2 shadow-lg">
-        <span className="text-sm font-medium text-gray-700">記号:</span>
+      {/* ツールバー - 記号選択 */}
+      <div className="bg-white p-2 flex flex-wrap items-center gap-1 shadow-lg">
+        <span className="text-xs font-medium text-gray-700 mr-1">記号:</span>
         {ANNOTATION_TYPES.map((type) => (
           <button
             key={type.id}
             onClick={() => setSelectedType(type.id)}
-            className={`px-2 py-1 rounded text-sm border ${
+            className={`px-2 py-1 rounded text-xs border ${
               selectedType === type.id
                 ? 'bg-blue-600 text-white border-blue-600'
                 : 'bg-gray-100 text-gray-700 border-gray-300'
@@ -179,22 +206,36 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         ))}
       </div>
 
-      {/* 色選択 + 追加ボタン */}
-      <div className="bg-white px-3 pb-3 flex items-center gap-2 border-b">
-        <span className="text-sm font-medium text-gray-700">色:</span>
+      {/* 色 + サイズ + 追加 */}
+      <div className="bg-white px-2 pb-2 flex flex-wrap items-center gap-2 border-b">
+        <span className="text-xs font-medium text-gray-700">色:</span>
         {COLORS.map((color) => (
           <button
             key={color}
             onClick={() => setSelectedColor(color)}
-            className={`w-6 h-6 rounded-full border-2 ${
+            className={`w-5 h-5 rounded-full border-2 ${
               selectedColor === color ? 'border-gray-800 scale-110' : 'border-gray-300'
             }`}
             style={{ backgroundColor: color }}
           />
         ))}
+        <span className="text-xs font-medium text-gray-700 ml-2">サイズ:</span>
+        {SIZES.map((size) => (
+          <button
+            key={size.value}
+            onClick={() => setSelectedSize(size.value)}
+            className={`px-2 py-0.5 rounded text-xs border ${
+              selectedSize === size.value
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-gray-100 text-gray-700 border-gray-300'
+            }`}
+          >
+            {size.label}
+          </button>
+        ))}
         <button
           onClick={addAnnotation}
-          className="ml-auto bg-green-600 text-white px-3 py-1 rounded text-sm font-medium"
+          className="ml-auto bg-green-600 text-white px-3 py-1 rounded text-xs font-medium"
         >
           ＋追加
         </button>
@@ -203,7 +244,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
       {/* 写真エリア */}
       <div
         ref={containerRef}
-        className="flex-1 relative overflow-hidden m-2"
+        className="flex-1 relative overflow-hidden m-1"
         onMouseMove={handlePointerMove}
         onMouseUp={handlePointerUp}
         onMouseLeave={handlePointerUp}
@@ -217,14 +258,17 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
           draggable={false}
         />
         {items.map((item, index) => renderAnnotation(item, index))}
+        <p className="absolute bottom-1 left-1 text-white text-xs bg-black/50 px-2 py-0.5 rounded">
+          ドラッグ: 移動 / 右下□: サイズ変更
+        </p>
       </div>
 
       {/* 下部ボタン */}
-      <div className="bg-white p-3 flex justify-between">
-        <button onClick={onClose} className="btn-secondary">
+      <div className="bg-white p-2 flex justify-between">
+        <button onClick={onClose} className="btn-secondary text-sm">
           キャンセル
         </button>
-        <button onClick={handleSave} className="btn-primary">
+        <button onClick={handleSave} className="btn-primary text-sm">
           ✓ 保存
         </button>
       </div>

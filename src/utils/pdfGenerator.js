@@ -598,23 +598,31 @@ function drawAnnotationsOnPhoto(pdf, annotations, photoX, photoY, photoW, photoH
         break
       case 'box3d':
         // 前面
-        ctx.strokeRect(10, canvasSize * 0.25, canvasSize * 0.65, canvasSize * 0.7)
-        // 上面
+        ctx.strokeRect(canvasSize * 0.05, canvasSize * 0.3, canvasSize * 0.55, canvasSize * 0.65)
+        // 背面（点線）
+        ctx.setLineDash([sw * 3, sw * 3])
+        ctx.strokeRect(canvasSize * 0.4, canvasSize * 0.05, canvasSize * 0.55, canvasSize * 0.65)
+        ctx.setLineDash([])
+        // 奥行き線（前面→背面の4辺）
         ctx.beginPath()
-        ctx.moveTo(10, canvasSize * 0.25)
-        ctx.lineTo(canvasSize * 0.3, canvasSize * 0.05)
-        ctx.lineTo(canvasSize * 0.95, canvasSize * 0.05)
-        ctx.lineTo(canvasSize * 0.7, canvasSize * 0.25)
-        ctx.closePath()
+        ctx.moveTo(canvasSize * 0.05, canvasSize * 0.3)
+        ctx.lineTo(canvasSize * 0.4, canvasSize * 0.05)
         ctx.stroke()
-        // 右側面
         ctx.beginPath()
-        ctx.moveTo(canvasSize * 0.7, canvasSize * 0.25)
+        ctx.moveTo(canvasSize * 0.6, canvasSize * 0.3)
         ctx.lineTo(canvasSize * 0.95, canvasSize * 0.05)
-        ctx.lineTo(canvasSize * 0.95, canvasSize * 0.75)
-        ctx.lineTo(canvasSize * 0.7, canvasSize * 0.95)
-        ctx.closePath()
         ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(canvasSize * 0.6, canvasSize * 0.95)
+        ctx.lineTo(canvasSize * 0.95, canvasSize * 0.7)
+        ctx.stroke()
+        // 奥の辺（点線）
+        ctx.setLineDash([sw * 3, sw * 3])
+        ctx.beginPath()
+        ctx.moveTo(canvasSize * 0.05, canvasSize * 0.95)
+        ctx.lineTo(canvasSize * 0.4, canvasSize * 0.7)
+        ctx.stroke()
+        ctx.setLineDash([])
         break
       case 'circle':
         ctx.beginPath()

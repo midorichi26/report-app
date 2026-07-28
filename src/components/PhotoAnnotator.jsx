@@ -285,11 +285,14 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
       case 'box3d':
         return (<>
           {/* 前面 */}
-          <rect x="5" y="25" width="65" height="70" stroke={item.color} strokeWidth={strokeWidth} fill="none" />
-          {/* 上面 */}
-          <polygon points="5,25 30,5 95,5 70,25" stroke={item.color} strokeWidth={strokeWidth} fill="none" />
-          {/* 右側面 */}
-          <polygon points="70,25 95,5 95,75 70,95" stroke={item.color} strokeWidth={strokeWidth} fill="none" />
+          <rect x="5" y="30" width="55" height="65" stroke={item.color} strokeWidth={strokeWidth} fill="none" />
+          {/* 背面 */}
+          <rect x="40" y="5" width="55" height="65" stroke={item.color} strokeWidth={strokeWidth} fill="none" strokeDasharray={`${strokeWidth * 2}`} />
+          {/* 4つの奥行き線 */}
+          <line x1="5" y1="30" x2="40" y2="5" stroke={item.color} strokeWidth={strokeWidth} />
+          <line x1="60" y1="30" x2="95" y2="5" stroke={item.color} strokeWidth={strokeWidth} />
+          <line x1="5" y1="95" x2="40" y2="70" stroke={item.color} strokeWidth={strokeWidth} strokeDasharray={`${strokeWidth * 2}`} />
+          <line x1="60" y1="95" x2="95" y2="70" stroke={item.color} strokeWidth={strokeWidth} />
         </>)
       case 'circle':
         return <ellipse cx="50" cy="50" rx="45" ry="45" stroke={item.color} strokeWidth={strokeWidth} fill="none" />

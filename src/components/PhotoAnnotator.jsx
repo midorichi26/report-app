@@ -10,10 +10,10 @@ const ANNOTATION_TYPES = [
 
 const COLORS = ['#FF0000', '#0000FF', '#00AA00', '#FF8800', '#000000']
 const SIZES = [
-  { label: 'S', value: 10 },
-  { label: 'M', value: 18 },
-  { label: 'L', value: 28 },
-  { label: 'XL', value: 40 },
+  { label: 'S', value: 4 },
+  { label: 'M', value: 7 },
+  { label: 'L', value: 11 },
+  { label: 'XL', value: 16 },
 ]
 
 function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
@@ -22,7 +22,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   const [selectedColor, setSelectedColor] = useState('#FF0000')
   const [selectedSize, setSelectedSize] = useState(18)
   const [activeIndex, setActiveIndex] = useState(null)
-  const [mode, setMode] = useState(null) // 'move' or 'resize'
+  const [mode, setMode] = useState(null) // 'move', 'resize', or 'rotate'
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })
   const [startItem, setStartItem] = useState(null)
   const containerRef = useRef(null)
@@ -33,8 +33,9 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
       color: selectedColor,
       x: 50,
       y: 50,
-      width: selectedSize * 2.5,  // パーセント幅
-      height: selectedSize * 1.8, // パーセント高さ
+      width: selectedSize * 2,
+      height: selectedSize * 1.5,
+      rotation: 0,
     }
     setItems([...items, newItem])
   }
@@ -76,6 +77,15 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
     setStartItem({ ...items[index] })
   }
 
+  const handleRotateStart = (e, index) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setActiveIndex(index)
+    setMode('rotate')
+    setStartPos(getPosition(e))
+    setStartItem({ ...items[index] })
+  }
+
   const handlePointerMove = (e) => {
     if (activeIndex === null || !startItem) return
     e.preventDefault()
@@ -93,8 +103,19 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
     } else if (mode === 'resize') {
       updated[activeIndex] = {
         ...updated[activeIndex],
-        width: Math.max(5, startItem.width + dx),
-        height: Math.max(3, startItem.height + dy),
+        width: Math.max(3, startItem.width + dx),
+        height: Math.max(2, startItem.height + dy),
+      }
+    } else if (mode === 'rotate') {
+      // 中心からの角度を計算
+      const centerX = startItem.x
+      const centerY = startItem.y
+      const startAngle = Math.atan2(startPos.y - centerY, startPos.x - centerX)
+      const currentAngle = Math.atan2(pos.y - centerY, pos.x - centerX)
+      const angleDiff = (currentAngle - startAngle) * (180 / Math.PI)
+      updated[activeIndex] = {
+        ...updated[activeIndex],
+        rotation: (startItem.rotation || 0) + angleDiff,
       }
     }
     setItems(updated)
@@ -116,7 +137,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
       position: 'absolute',
       left: `${item.x}%`,
       top: `${item.y}%`,
-      transform: 'translate(-50%, -50%)',
+      transform: `translate(-50%, -50%) rotate(${item.rotation || 0}deg)`,
       width: `${item.width}%`,
       height: `${item.height}%`,
       cursor: 'grab',
@@ -140,17 +161,27 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
 
         {/* リサイズハンドル（右下） */}
         <div
-          className="absolute -bottom-1 -right-1 w-5 h-5 bg-white border-2 border-blue-500 rounded-sm cursor-nwse-resize"
+          className="absolute -bottom-1 -right-1 w-4 h-4 bg-white border-2 border-blue-500 rounded-sm cursor-nwse-resize"
           onMouseDown={(e) => handleResizeStart(e, index)}
           onTouchStart={(e) => handleResizeStart(e, index)}
           style={{ touchAction: 'none' }}
         />
 
+        {/* 回転ハンドル（右上） */}
+        <div
+          className="absolute -top-1 -right-1 w-4 h-4 bg-white border-2 border-green-500 rounded-full cursor-crosshair flex items-center justify-center"
+          onMouseDown={(e) => handleRotateStart(e, index)}
+          onTouchStart={(e) => handleRotateStart(e, index)}
+          style={{ touchAction: 'none', fontSize: '8px' }}
+        >
+          ↻
+        </div>
+
         {/* 削除ボタン（左上） */}
         <button
           onClick={(e) => { e.stopPropagation(); removeAnnotation(index) }}
-          className="absolute -top-2 -left-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
-          style={{ touchAction: 'none' }}
+          className="absolute -top-1 -left-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs"
+          style={{ touchAction: 'none', fontSize: '9px' }}
         >
           ×
         </button>
@@ -259,7 +290,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         />
         {items.map((item, index) => renderAnnotation(item, index))}
         <p className="absolute bottom-1 left-1 text-white text-xs bg-black/50 px-2 py-0.5 rounded">
-          ドラッグ: 移動 / 右下□: サイズ変更
+          ドラッグ: 移動 / 右下□: サイズ / 右上○: 回転
         </p>
       </div>
 

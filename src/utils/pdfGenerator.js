@@ -217,7 +217,7 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
         offsetY = -(pos.y)
         const newPhotoY = currentY + rowCommentOffset
         
-        // コメントを写真の上に描画
+        // コメントを写真の真上に描画
         if (comment) {
           drawCommentLabel(pdf, comment, margin + pos.x, currentY, pos.w, commentHeightMm, pxPerMm, dpi)
         }
@@ -234,9 +234,9 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
         continue
       }
 
-      // コメントを写真の上に描画
+      // コメントを写真の真上に描画
       if (comment) {
-        const commentY = currentY + pos.y + offsetY
+        const commentY = photoY - commentHeightMm
         drawCommentLabel(pdf, comment, margin + pos.x, commentY, pos.w, commentHeightMm, pxPerMm, dpi)
       }
 

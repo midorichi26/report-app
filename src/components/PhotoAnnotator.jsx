@@ -170,13 +170,22 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
     setItems(updated)
   }
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e) => {
     if (activeIndex !== null && !hasDragged) {
       setEditingIndex(activeIndex)
+      // クリックイベントのバブルを防ぐためにフラグを使用
+      e?.stopPropagation?.()
     }
     setActiveIndex(null)
     setMode(null)
     setStartItem(null)
+  }
+
+  const handleContainerClick = (e) => {
+    // 記号上でなく背景をクリックした場合のみ編集パネルを閉じる
+    if (e.target === containerRef.current || e.target.tagName === 'IMG') {
+      setEditingIndex(null)
+    }
   }
 
   const handleSave = () => {
@@ -410,7 +419,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         onMouseLeave={handlePointerUp}
         onTouchMove={handlePointerMove}
         onTouchEnd={handlePointerUp}
-        onClick={() => setEditingIndex(null)}
+        onClick={handleContainerClick}
       >
         <img src={photo} alt="注釈対象" className="w-full h-full object-contain" draggable={false} />
         {items.map((item, index) => renderAnnotation(item, index))}

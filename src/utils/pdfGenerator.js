@@ -189,12 +189,14 @@ function drawBody(pdf, body, margin, currentY, contentWidth, canvasWidthPx, pxPe
  */
 async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, pageHeight) {
   const photoComments = report.photoComments || []
+  const photoAnnotations = report.photoAnnotations || []
   const photoDataWithComments = []
   for (let i = 0; i < report.photos.length; i++) {
     if (report.photos[i] !== null) {
       photoDataWithComments.push({
         photo: report.photos[i],
         comment: photoComments[i] || null,
+        annotations: photoAnnotations[i] || [],
       })
     }
   }
@@ -246,7 +248,7 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
     const rowCommentOffset = rowHasComment ? commentHeightMm : 0
 
     for (const i of group) {
-      const { photo, comment } = photoDataWithComments[i]
+      const { photo, comment, annotations } = photoDataWithComments[i]
       const pos = layout.positions[i]
       const photoY = currentY + pos.y + offsetY + rowCommentOffset
 
@@ -267,6 +269,10 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
           const imgProps = imageSizes[i]
           const fitted = fitImageInBox(pos.w, pos.h, imgProps.width, imgProps.height)
           pdf.addImage(photo, 'JPEG', margin + pos.x + fitted.offsetX, newPhotoY + fitted.offsetY, fitted.w, fitted.h)
+          // 注釈を描画
+          if (annotations.length > 0) {
+            drawAnnotationsOnPhoto(pdf, annotations, margin + pos.x + fitted.offsetX, newPhotoY + fitted.offsetY, fitted.w, fitted.h)
+          }
         } catch (error) {
           pdf.setDrawColor(200, 200, 200)
           pdf.rect(margin + pos.x, newPhotoY, pos.w, pos.h)
@@ -285,6 +291,10 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
         const imgProps = imageSizes[i]
         const fitted = fitImageInBox(pos.w, pos.h, imgProps.width, imgProps.height)
         pdf.addImage(photo, 'JPEG', margin + pos.x + fitted.offsetX, photoY + fitted.offsetY, fitted.w, fitted.h)
+        // 注釈を描画
+        if (annotations.length > 0) {
+          drawAnnotationsOnPhoto(pdf, annotations, margin + pos.x + fitted.offsetX, photoY + fitted.offsetY, fitted.w, fitted.h)
+        }
       } catch (error) {
         pdf.setDrawColor(200, 200, 200)
         pdf.rect(margin + pos.x, photoY, pos.w, pos.h)
@@ -483,4 +493,96 @@ function fitImageInBox(boxW, boxH, imgW, imgH) {
   const offsetY = (boxH - h) / 2
 
   return { w, h, offsetX, offsetY }
+}
+
+
+/**
+ * 写真上に注釈を描画する
+ * annotations: [{type, color, x, y, width, height, rotation, stroke}]
+ * photoX, photoY, photoW, photoH: PDF上の写真の位置とサイズ（mm）
+ */
+function drawAnnotationsOnPhoto(pdf, annotations, photoX, photoY, photoW, photoH) {
+  for (const ann of annotations) {
+    // 注釈の位置を写真座標系からPDF座標系に変換
+    // ann.x, ann.y はパーセント（0-100）で中心位置
+    const centerX = photoX + (ann.x / 100) * photoW
+    const centerY = photoY + (ann.y / 100) * photoH
+    const annW = (ann.width / 100) * photoW
+    const annH = (ann.height / 100) * photoH
+    const strokeWidth = (ann.stroke || 5) * 0.15 // PDFのmm単位に変換
+    const rotation = ann.rotation || 0
+
+    pdf.setDrawColor(ann.color)
+    pdf.setLineWidth(strokeWidth)
+
+    // 回転を考慮した描画
+    // jsPDFでは回転描画が直接サポートされていないため、
+    // Canvasで描画してから画像として貼り付ける
+    const canvasSize = 200
+    const canvas = document.createElement('canvas')
+    canvas.width = canvasSize
+    canvas.height = canvasSize
+    const ctx = canvas.getContext('2d')
+
+    // 背景透明
+    ctx.clearRect(0, 0, canvasSize, canvasSize)
+
+    // 回転
+    ctx.translate(canvasSize / 2, canvasSize / 2)
+    ctx.rotate((rotation * Math.PI) / 180)
+    ctx.translate(-canvasSize / 2, -canvasSize / 2)
+
+    // 記号を描画
+    const sw = (ann.stroke || 5) * 1.5
+    ctx.strokeStyle = ann.color
+    ctx.fillStyle = ann.color
+    ctx.lineWidth = sw
+    ctx.lineCap = 'round'
+
+    switch (ann.type) {
+      case 'arrow':
+        ctx.beginPath()
+        ctx.moveTo(10, canvasSize / 2)
+        ctx.lineTo(canvasSize * 0.75, canvasSize / 2)
+        ctx.stroke()
+        // 矢印の先端
+        ctx.beginPath()
+        ctx.moveTo(canvasSize * 0.7, canvasSize * 0.3)
+        ctx.lineTo(canvasSize * 0.95, canvasSize / 2)
+        ctx.lineTo(canvasSize * 0.7, canvasSize * 0.7)
+        ctx.closePath()
+        ctx.fill()
+        break
+      case 'line':
+        ctx.beginPath()
+        ctx.moveTo(10, canvasSize / 2)
+        ctx.lineTo(canvasSize - 10, canvasSize / 2)
+        ctx.stroke()
+        break
+      case 'rect':
+        ctx.strokeRect(10, 10, canvasSize - 20, canvasSize - 20)
+        break
+      case 'circle':
+        ctx.beginPath()
+        ctx.ellipse(canvasSize / 2, canvasSize / 2, canvasSize / 2 - 10, canvasSize / 2 - 10, 0, 0, Math.PI * 2)
+        ctx.stroke()
+        break
+      case 'cross':
+        ctx.beginPath()
+        ctx.moveTo(15, 15)
+        ctx.lineTo(canvasSize - 15, canvasSize - 15)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(canvasSize - 15, 15)
+        ctx.lineTo(15, canvasSize - 15)
+        ctx.stroke()
+        break
+    }
+
+    // CanvasをPDFに貼り付け（PNG透過対応）
+    const imgData = canvas.toDataURL('image/png')
+    const drawX = centerX - annW / 2
+    const drawY = centerY - annH / 2
+    pdf.addImage(imgData, 'PNG', drawX, drawY, annW, annH)
+  }
 }

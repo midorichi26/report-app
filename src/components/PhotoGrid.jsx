@@ -134,7 +134,7 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
             <img
               src={photo}
               alt={`写真 ${index + 1}`}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain bg-gray-100"
             />
             {/* 注釈オーバーレイ */}
             {annotations && annotations.length > 0 && (

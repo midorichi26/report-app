@@ -4,7 +4,7 @@ import PrintModal from './PrintModal.jsx'
 import { generatePDF, generatePDFFile } from '../utils/pdfGenerator.js'
 
 function ReportEditor({ report, onSave, onBack }) {
-  const [formData, setFormData] = useState({ ...report, photoComments: report.photoComments || Array(report.photoCount).fill(null) })
+  const [formData, setFormData] = useState({ ...report, photoComments: report.photoComments || Array(report.photoCount).fill(null), photoAnnotations: report.photoAnnotations || Array(report.photoCount).fill([]) })
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const reportRef = useRef(null)
@@ -23,6 +23,12 @@ function ReportEditor({ report, onSave, onBack }) {
     const newComments = [...(formData.photoComments || Array(formData.photoCount).fill(null))]
     newComments[index] = value
     setFormData(prev => ({ ...prev, photoComments: newComments }))
+  }
+
+  const handlePhotoAnnotationsChange = (index, annotations) => {
+    const newAnnotations = [...(formData.photoAnnotations || Array(formData.photoCount).fill([]))]
+    newAnnotations[index] = annotations
+    setFormData(prev => ({ ...prev, photoAnnotations: newAnnotations }))
   }
 
   const handleSave = () => {
@@ -127,6 +133,8 @@ function ReportEditor({ report, onSave, onBack }) {
           onPhotoChange={handlePhotoChange}
           photoComments={formData.photoComments}
           onPhotoCommentChange={handlePhotoCommentChange}
+          photoAnnotations={formData.photoAnnotations}
+          onPhotoAnnotationsChange={handlePhotoAnnotationsChange}
         />
       </div>
 

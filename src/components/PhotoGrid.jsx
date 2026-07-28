@@ -1,6 +1,7 @@
 import React, { useRef } from 'react'
+import PhotoAnnotator from './PhotoAnnotator.jsx'
 
-function PhotoGrid({ photos, photoCount, onPhotoChange, photoComments, onPhotoCommentChange }) {
+function PhotoGrid({ photos, photoCount, onPhotoChange, photoComments, onPhotoCommentChange, photoAnnotations, onPhotoAnnotationsChange }) {
   return (
     <div className={getGridClass(photoCount)}>
       {photos.map((photo, index) => (
@@ -11,16 +12,19 @@ function PhotoGrid({ photos, photoCount, onPhotoChange, photoComments, onPhotoCo
           onPhotoChange={onPhotoChange}
           comment={photoComments?.[index] ?? null}
           onCommentChange={onPhotoCommentChange}
+          annotations={photoAnnotations?.[index] || []}
+          onAnnotationsChange={onPhotoAnnotationsChange}
         />
       ))}
     </div>
   )
 }
 
-function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange }) {
+function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, annotations, onAnnotationsChange }) {
   const cameraInputRef = useRef(null)
   const galleryInputRef = useRef(null)
   const [showMenu, setShowMenu] = React.useState(false)
+  const [showAnnotator, setShowAnnotator] = React.useState(false)
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0]
@@ -146,6 +150,13 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange }) {
             >
               ↻
             </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowAnnotator(true) }}
+              className="absolute bottom-1 right-8 bg-yellow-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-yellow-600"
+              aria-label="記号を追加"
+            >
+              ✏
+            </button>
             <div className="absolute bottom-1 left-1 bg-black/50 text-white text-xs px-2 py-0.5 rounded">
               {index + 1}
             </div>
@@ -203,6 +214,16 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange }) {
           className="hidden"
         />
       </div>
+
+      {/* 注釈エディタ */}
+      {showAnnotator && (
+        <PhotoAnnotator
+          photo={photo}
+          annotations={annotations}
+          onChange={(newAnnotations) => onAnnotationsChange(index, newAnnotations)}
+          onClose={() => setShowAnnotator(false)}
+        />
+      )}
     </div>
   )
 }

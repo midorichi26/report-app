@@ -161,18 +161,20 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
 
         {/* リサイズハンドル（右下） */}
         <div
-          className="absolute -bottom-1 -right-1 w-4 h-4 bg-white border-2 border-blue-500 rounded-sm cursor-nwse-resize"
+          className="absolute -bottom-2 -right-2 w-7 h-7 bg-white border-2 border-blue-500 rounded-sm cursor-nwse-resize flex items-center justify-center"
           onMouseDown={(e) => handleResizeStart(e, index)}
           onTouchStart={(e) => handleResizeStart(e, index)}
-          style={{ touchAction: 'none' }}
-        />
+          style={{ touchAction: 'none', fontSize: '12px' }}
+        >
+          ⇲
+        </div>
 
         {/* 回転ハンドル（右上） */}
         <div
-          className="absolute -top-1 -right-1 w-4 h-4 bg-white border-2 border-green-500 rounded-full cursor-crosshair flex items-center justify-center"
+          className="absolute -top-2 -right-2 w-7 h-7 bg-white border-2 border-green-500 rounded-full cursor-crosshair flex items-center justify-center"
           onMouseDown={(e) => handleRotateStart(e, index)}
           onTouchStart={(e) => handleRotateStart(e, index)}
-          style={{ touchAction: 'none', fontSize: '8px' }}
+          style={{ touchAction: 'none', fontSize: '14px' }}
         >
           ↻
         </div>
@@ -180,8 +182,8 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         {/* 削除ボタン（左上） */}
         <button
           onClick={(e) => { e.stopPropagation(); removeAnnotation(index) }}
-          className="absolute -top-1 -left-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs"
-          style={{ touchAction: 'none', fontSize: '9px' }}
+          className="absolute -top-2 -left-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold"
+          style={{ touchAction: 'none', fontSize: '16px' }}
         >
           ×
         </button>

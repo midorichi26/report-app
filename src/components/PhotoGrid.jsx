@@ -109,7 +109,7 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
             value={comment}
             onChange={(e) => onCommentChange(index, e.target.value)}
             placeholder={`写真${index + 1}のコメント`}
-            className="input-field text-sm flex-1"
+            className="input-field text-base flex-1 text-center"
             onClick={(e) => e.stopPropagation()}
           />
           <button
@@ -124,7 +124,7 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
       ) : (
         <button
           onClick={handleAddComment}
-          className="text-xs text-blue-500 hover:text-blue-700 text-left px-1"
+          className="text-sm text-blue-500 hover:text-blue-700 text-center px-1"
         >
           + コメントを追加
         </button>

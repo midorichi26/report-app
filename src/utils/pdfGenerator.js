@@ -322,10 +322,10 @@ function drawCommentLabel(pdf, comment, x, y, width, height, pxPerMm, dpi) {
 
   cCtx.fillStyle = '#ffffff'
   cCtx.fillRect(0, 0, commentCanvas.width, commentCanvas.height)
-  cCtx.font = `${11 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
-  cCtx.fillStyle = '#444444'
-  cCtx.textAlign = 'left'
-  cCtx.fillText(comment, 2 * dpi, commentHeightPx * 0.7)
+  cCtx.font = `bold ${13 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
+  cCtx.fillStyle = '#333333'
+  cCtx.textAlign = 'center'
+  cCtx.fillText(comment, commentWidthPx / 2, commentHeightPx * 0.7)
 
   const commentImg = commentCanvas.toDataURL('image/png')
   pdf.addImage(commentImg, 'PNG', x, y, width, height)

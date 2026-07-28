@@ -596,6 +596,26 @@ function drawAnnotationsOnPhoto(pdf, annotations, photoX, photoY, photoW, photoH
       case 'rect':
         ctx.strokeRect(10, 10, canvasSize - 20, canvasSize - 20)
         break
+      case 'box3d':
+        // 前面
+        ctx.strokeRect(10, canvasSize * 0.25, canvasSize * 0.65, canvasSize * 0.7)
+        // 上面
+        ctx.beginPath()
+        ctx.moveTo(10, canvasSize * 0.25)
+        ctx.lineTo(canvasSize * 0.3, canvasSize * 0.05)
+        ctx.lineTo(canvasSize * 0.95, canvasSize * 0.05)
+        ctx.lineTo(canvasSize * 0.7, canvasSize * 0.25)
+        ctx.closePath()
+        ctx.stroke()
+        // 右側面
+        ctx.beginPath()
+        ctx.moveTo(canvasSize * 0.7, canvasSize * 0.25)
+        ctx.lineTo(canvasSize * 0.95, canvasSize * 0.05)
+        ctx.lineTo(canvasSize * 0.95, canvasSize * 0.75)
+        ctx.lineTo(canvasSize * 0.7, canvasSize * 0.95)
+        ctx.closePath()
+        ctx.stroke()
+        break
       case 'circle':
         ctx.beginPath()
         ctx.ellipse(canvasSize / 2, canvasSize / 2, canvasSize / 2 - 10, canvasSize / 2 - 10, 0, 0, Math.PI * 2)

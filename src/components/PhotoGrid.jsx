@@ -387,6 +387,14 @@ function renderAnnotationSVG(ann) {
       return <line x1="5" y1="50" x2="95" y2="50" stroke={ann.color} strokeWidth={strokeWidth} />
     case 'rect':
       return <rect x="5" y="5" width="90" height="90" stroke={ann.color} strokeWidth={strokeWidth} fill="none" />
+    case 'box3d':
+      return (
+        <>
+          <rect x="5" y="25" width="65" height="70" stroke={ann.color} strokeWidth={strokeWidth} fill="none" />
+          <polygon points="5,25 30,5 95,5 70,25" stroke={ann.color} strokeWidth={strokeWidth} fill="none" />
+          <polygon points="70,25 95,5 95,75 70,95" stroke={ann.color} strokeWidth={strokeWidth} fill="none" />
+        </>
+      )
     case 'circle':
       return <ellipse cx="50" cy="50" rx="45" ry="45" stroke={ann.color} strokeWidth={strokeWidth} fill="none" />
     case 'cross':

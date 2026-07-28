@@ -1,7 +1,7 @@
 import React, { useRef } from 'react'
 import PhotoAnnotator from './PhotoAnnotator.jsx'
 
-function PhotoGrid({ photos, photoCount, onPhotoChange, photoComments, onPhotoCommentChange, photoAnnotations, onPhotoAnnotationsChange }) {
+function PhotoGrid({ photos, photoCount, onPhotoChange, photoComments, onPhotoCommentChange, photoAnnotations, onPhotoAnnotationsChange, dateStamp, onDateStampChange }) {
   return (
     <div className={getGridClass(photoCount)}>
       {photos.map((photo, index) => (
@@ -14,17 +14,21 @@ function PhotoGrid({ photos, photoCount, onPhotoChange, photoComments, onPhotoCo
           onCommentChange={onPhotoCommentChange}
           annotations={photoAnnotations?.[index] || []}
           onAnnotationsChange={onPhotoAnnotationsChange}
+          dateStamp={dateStamp}
+          onDateStampChange={onDateStampChange}
         />
       ))}
     </div>
   )
 }
 
-function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, annotations, onAnnotationsChange }) {
+function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, annotations, onAnnotationsChange, dateStamp, onDateStampChange }) {
   const cameraInputRef = useRef(null)
   const galleryInputRef = useRef(null)
   const [showMenu, setShowMenu] = React.useState(false)
   const [showAnnotator, setShowAnnotator] = React.useState(false)
+  const [isDraggingStamp, setIsDraggingStamp] = React.useState(false)
+  const slotRef = useRef(null)
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0]
@@ -126,8 +130,28 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
 
       {/* 写真スロット */}
       <div
+        ref={slotRef}
         className="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors bg-gray-50 aspect-[3/2]"
         onClick={handleSlotClick}
+        onMouseMove={(e) => {
+          if (!isDraggingStamp || !slotRef.current) return
+          const rect = slotRef.current.getBoundingClientRect()
+          const x = ((e.clientX - rect.left) / rect.width) * 100
+          const y = ((e.clientY - rect.top) / rect.height) * 100
+          onDateStampChange({ ...dateStamp, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) })
+        }}
+        onMouseUp={() => setIsDraggingStamp(false)}
+        onMouseLeave={() => setIsDraggingStamp(false)}
+        onTouchMove={(e) => {
+          if (!isDraggingStamp || !slotRef.current) return
+          e.preventDefault()
+          const rect = slotRef.current.getBoundingClientRect()
+          const touch = e.touches[0]
+          const x = ((touch.clientX - rect.left) / rect.width) * 100
+          const y = ((touch.clientY - rect.top) / rect.height) * 100
+          onDateStampChange({ ...dateStamp, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) })
+        }}
+        onTouchEnd={() => setIsDraggingStamp(false)}
       >
         {photo ? (
           <>
@@ -156,6 +180,33 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
                     </svg>
                   </div>
                 ))}
+              </div>
+            )}
+            {/* 日付スタンプ */}
+            {dateStamp && dateStamp.text && (
+              <div
+                className="absolute cursor-grab select-none"
+                style={{
+                  left: `${dateStamp.x}%`,
+                  top: `${dateStamp.y}%`,
+                  transform: 'translate(-50%, -50%)',
+                  color: dateStamp.color,
+                  fontSize: `${dateStamp.size}px`,
+                  fontWeight: 'bold',
+                  textShadow: dateStamp.color === '#000000' ? '0 0 3px white' : '0 0 3px black',
+                  whiteSpace: 'nowrap',
+                  touchAction: 'none',
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation()
+                  setIsDraggingStamp(true)
+                }}
+                onTouchStart={(e) => {
+                  e.stopPropagation()
+                  setIsDraggingStamp(true)
+                }}
+              >
+                {dateStamp.text}
               </div>
             )}
             <button

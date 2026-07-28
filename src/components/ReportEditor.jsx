@@ -4,7 +4,12 @@ import PrintModal from './PrintModal.jsx'
 import { generatePDF, generatePDFFile } from '../utils/pdfGenerator.js'
 
 function ReportEditor({ report, onSave, onBack }) {
-  const [formData, setFormData] = useState({ ...report, photoComments: report.photoComments || Array(report.photoCount).fill(null), photoAnnotations: report.photoAnnotations || Array(report.photoCount).fill([]) })
+  const [formData, setFormData] = useState({
+    ...report,
+    photoComments: report.photoComments || Array(report.photoCount).fill(null),
+    photoAnnotations: report.photoAnnotations || Array(report.photoCount).fill([]),
+    dateStamp: report.dateStamp || { text: '', color: '#FFFFFF', size: 14, x: 80, y: 90 },
+  })
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const reportRef = useRef(null)
@@ -127,6 +132,45 @@ function ReportEditor({ report, onSave, onBack }) {
         <h3 className="text-lg font-bold text-gray-800 mb-3">
           写真 ({formData.photos.filter(p => p !== null).length}/{formData.photoCount}枚)
         </h3>
+
+        {/* 日付スタンプ設定 */}
+        <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <label className="block text-sm font-medium text-gray-700 mb-2">📅 写真上の日付（全写真共通）</label>
+          <input
+            type="text"
+            value={formData.dateStamp.text}
+            onChange={(e) => handleChange('dateStamp', { ...formData.dateStamp, text: e.target.value })}
+            placeholder="例: 2026/7/28（空欄で非表示）"
+            className="input-field text-sm mb-2"
+          />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-600">色:</span>
+              {['#FFFFFF', '#FFFF00', '#FF0000', '#00FF00', '#000000'].map((c) => (
+                <button
+                  key={c}
+                  onClick={() => handleChange('dateStamp', { ...formData.dateStamp, color: c })}
+                  className={`w-5 h-5 rounded-full border-2 ${formData.dateStamp.color === c ? 'border-blue-600 scale-110' : 'border-gray-400'}`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-600">サイズ:</span>
+              {[{ label: '小', value: 10 }, { label: '中', value: 14 }, { label: '大', value: 20 }].map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => handleChange('dateStamp', { ...formData.dateStamp, size: s.value })}
+                  className={`px-2 py-0.5 rounded text-xs border ${formData.dateStamp.size === s.value ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">※ 写真上の日付はドラッグで位置調整できます</p>
+        </div>
+
         <PhotoGrid
           photos={formData.photos}
           photoCount={formData.photoCount}
@@ -135,6 +179,8 @@ function ReportEditor({ report, onSave, onBack }) {
           onPhotoCommentChange={handlePhotoCommentChange}
           photoAnnotations={formData.photoAnnotations}
           onPhotoAnnotationsChange={handlePhotoAnnotationsChange}
+          dateStamp={formData.dateStamp}
+          onDateStampChange={(stamp) => handleChange('dateStamp', stamp)}
         />
       </div>
 

@@ -267,6 +267,10 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
           if (annotations.length > 0) {
             drawAnnotationsOnPhoto(pdf, annotations, margin + pos.x + fitted.offsetX, newPhotoY + fitted.offsetY, fitted.w, fitted.h)
           }
+          // 日付スタンプ
+          if (report.dateStamp && report.dateStamp.text) {
+            drawDateStamp(pdf, report.dateStamp, margin + pos.x + fitted.offsetX, newPhotoY + fitted.offsetY, fitted.w, fitted.h, pxPerMm, dpi)
+          }
         } catch (error) {
           pdf.setDrawColor(200, 200, 200)
           pdf.rect(margin + pos.x, newPhotoY, pos.w, pos.h)
@@ -285,6 +289,10 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
         pdf.addImage(photo, 'JPEG', margin + pos.x + fitted.offsetX, photoY + fitted.offsetY, fitted.w, fitted.h)
         if (annotations.length > 0) {
           drawAnnotationsOnPhoto(pdf, annotations, margin + pos.x + fitted.offsetX, photoY + fitted.offsetY, fitted.w, fitted.h)
+        }
+        // 日付スタンプ
+        if (report.dateStamp && report.dateStamp.text) {
+          drawDateStamp(pdf, report.dateStamp, margin + pos.x + fitted.offsetX, photoY + fitted.offsetY, fitted.w, fitted.h, pxPerMm, dpi)
         }
       } catch (error) {
         pdf.setDrawColor(200, 200, 200)
@@ -572,4 +580,43 @@ function drawAnnotationsOnPhoto(pdf, annotations, photoX, photoY, photoW, photoH
     const drawY = centerY - annH / 2
     pdf.addImage(imgData, 'PNG', drawX, drawY, annW, annH)
   }
+}
+
+
+/**
+ * 写真上に日付スタンプを描画する
+ */
+function drawDateStamp(pdf, dateStamp, photoX, photoY, photoW, photoH, pxPerMm, dpi) {
+  const x = photoX + (dateStamp.x / 100) * photoW
+  const y = photoY + (dateStamp.y / 100) * photoH
+  const fontSize = dateStamp.size * 0.8 // PDF用に調整
+
+  // Canvasで日付テキストを描画
+  const canvas = document.createElement('canvas')
+  const textPx = fontSize * dpi * 2
+  canvas.width = textPx * dateStamp.text.length * 0.7
+  canvas.height = textPx * 1.4
+  const ctx = canvas.getContext('2d')
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.font = `bold ${textPx}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
+  ctx.fillStyle = dateStamp.color
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+
+  // 影（読みやすくするため）
+  if (dateStamp.color !== '#000000') {
+    ctx.shadowColor = 'rgba(0,0,0,0.7)'
+    ctx.shadowBlur = textPx * 0.15
+  } else {
+    ctx.shadowColor = 'rgba(255,255,255,0.7)'
+    ctx.shadowBlur = textPx * 0.15
+  }
+
+  ctx.fillText(dateStamp.text, canvas.width / 2, canvas.height / 2)
+
+  const stampW = (canvas.width / pxPerMm) * 0.5
+  const stampH = (canvas.height / pxPerMm) * 0.5
+  const imgData = canvas.toDataURL('image/png')
+  pdf.addImage(imgData, 'PNG', x - stampW / 2, y - stampH / 2, stampW, stampH)
 }

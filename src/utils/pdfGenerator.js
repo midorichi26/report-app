@@ -28,7 +28,7 @@ export async function generatePDF(report) {
   }
 
   // --- 写真 ---
-  currentY = drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, pageHeight)
+  currentY = await drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, pageHeight)
 
   // --- フッター ---
   const pageCount = pdf.getNumberOfPages()
@@ -147,7 +147,7 @@ function drawBody(pdf, body, margin, currentY, contentWidth, canvasWidthPx, pxPe
 /**
  * 写真とコメントを描画
  */
-function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, pageHeight) {
+async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, pageHeight) {
   const photoComments = report.photoComments || []
   const photoDataWithComments = []
   for (let i = 0; i < report.photos.length; i++) {
@@ -160,6 +160,11 @@ function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, p
   }
 
   if (photoDataWithComments.length === 0) return currentY
+
+  // 全写真の実際のサイズを事前に非同期で取得
+  const imageSizes = await Promise.all(
+    photoDataWithComments.map(({ photo }) => loadImageDimensions(photo))
+  )
 
   if (currentY + 10 > pageHeight - margin) {
     pdf.addPage()
@@ -218,7 +223,10 @@ function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, p
         }
 
         try {
-          pdf.addImage(photo, 'JPEG', margin + pos.x, newPhotoY, pos.w, pos.h)
+          // 写真のアスペクト比を保持して枠内に収める
+          const imgProps = imageSizes[i]
+          const fitted = fitImageInBox(pos.w, pos.h, imgProps.width, imgProps.height)
+          pdf.addImage(photo, 'JPEG', margin + pos.x + fitted.offsetX, newPhotoY + fitted.offsetY, fitted.w, fitted.h)
         } catch (error) {
           pdf.setDrawColor(200, 200, 200)
           pdf.rect(margin + pos.x, newPhotoY, pos.w, pos.h)
@@ -233,7 +241,10 @@ function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, p
       }
 
       try {
-        pdf.addImage(photo, 'JPEG', margin + pos.x, photoY, pos.w, pos.h)
+        // 写真のアスペクト比を保持して枠内に収める
+        const imgProps = imageSizes[i]
+        const fitted = fitImageInBox(pos.w, pos.h, imgProps.width, imgProps.height)
+        pdf.addImage(photo, 'JPEG', margin + pos.x + fitted.offsetX, photoY + fitted.offsetY, fitted.w, fitted.h)
       } catch (error) {
         pdf.setDrawColor(200, 200, 200)
         pdf.rect(margin + pos.x, photoY, pos.w, pos.h)
@@ -392,4 +403,44 @@ function getPhotoLayout(count, availableWidth) {
   }
 
   return { positions, totalHeight }
+}
+
+/**
+ * Base64画像のサイズを非同期で取得する
+ */
+function loadImageDimensions(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight })
+    }
+    img.onerror = () => {
+      resolve({ width: 4, height: 3 }) // フォールバック
+    }
+    img.src = dataUrl
+  })
+}
+
+/**
+ * 画像をボックス内にアスペクト比を保持して収める
+ */
+function fitImageInBox(boxW, boxH, imgW, imgH) {
+  const boxRatio = boxW / boxH
+  const imgRatio = imgW / imgH
+
+  let w, h
+  if (imgRatio > boxRatio) {
+    // 横長の画像 → 幅に合わせる
+    w = boxW
+    h = boxW / imgRatio
+  } else {
+    // 縦長の画像 → 高さに合わせる
+    h = boxH
+    w = boxH * imgRatio
+  }
+
+  const offsetX = (boxW - w) / 2
+  const offsetY = (boxH - h) / 2
+
+  return { w, h, offsetX, offsetY }
 }

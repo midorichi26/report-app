@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react'
 import PhotoGrid from './PhotoGrid.jsx'
 import PrintModal from './PrintModal.jsx'
-import { generatePDF } from '../utils/pdfGenerator.js'
+import { generatePDF, generatePDFFile } from '../utils/pdfGenerator.js'
 
 function ReportEditor({ report, onSave, onBack }) {
   const [formData, setFormData] = useState({ ...report, photoComments: report.photoComments || Array(report.photoCount).fill(null) })
@@ -35,6 +35,28 @@ function ReportEditor({ report, onSave, onBack }) {
       await generatePDF(formData)
     } catch (error) {
       alert('PDF生成中にエラーが発生しました: ' + error.message)
+    }
+    setIsGeneratingPdf(false)
+  }
+
+  const handleSharePDF = async () => {
+    setIsGeneratingPdf(true)
+    try {
+      const file = await generatePDFFile(formData)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: formData.title || '報告書',
+          files: [file],
+        })
+      } else {
+        // Web Share APIが使えない場合はダウンロードにフォールバック
+        await generatePDF(formData)
+        alert('お使いのブラウザでは共有機能が使えないため、PDFをダウンロードしました。メールアプリから添付してください。')
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        alert('共有中にエラーが発生しました: ' + error.message)
+      }
     }
     setIsGeneratingPdf(false)
   }
@@ -115,6 +137,9 @@ function ReportEditor({ report, onSave, onBack }) {
         </button>
         <button onClick={handleGeneratePDF} disabled={isGeneratingPdf} className="btn-success">
           {isGeneratingPdf ? '⏳ 生成中...' : '📄 PDF保存'}
+        </button>
+        <button onClick={handleSharePDF} disabled={isGeneratingPdf} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors font-medium">
+          📤 PDFを共有
         </button>
         <button onClick={handlePrint} className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors font-medium">
           🖨️ コンビニプリント

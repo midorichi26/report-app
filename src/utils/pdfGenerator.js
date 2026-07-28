@@ -46,6 +46,46 @@ export async function generatePDF(report) {
 }
 
 /**
+ * PDFを生成してFileオブジェクトとして返す（共有用）
+ */
+export async function generatePDFFile(report) {
+  const { jsPDF } = await import('jspdf')
+
+  const pdf = new jsPDF('p', 'mm', 'a4')
+  const pageWidth = 210
+  const pageHeight = 297
+  const margin = 5
+  const contentWidth = pageWidth - margin * 2
+
+  const dpi = 2
+  const canvasWidthPx = contentWidth * dpi * 3.78
+  const pxPerMm = canvasWidthPx / contentWidth
+
+  let currentY = margin
+
+  currentY = drawHeader(pdf, report, margin, currentY, contentWidth, canvasWidthPx, pxPerMm, dpi)
+
+  if (report.body) {
+    currentY = drawBody(pdf, report.body, margin, currentY, contentWidth, canvasWidthPx, pxPerMm, dpi, pageHeight)
+  }
+
+  currentY = await drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, pageHeight)
+
+  const pageCount = pdf.getNumberOfPages()
+  for (let i = 1; i <= pageCount; i++) {
+    pdf.setPage(i)
+    pdf.setFontSize(8)
+    pdf.setTextColor(150, 150, 150)
+    pdf.text(`${i} / ${pageCount}`, pageWidth / 2, pageHeight - 8, { align: 'center' })
+    pdf.setTextColor(0, 0, 0)
+  }
+
+  const filename = `report_${report.date}_${report.title || 'untitled'}.pdf`
+  const blob = pdf.output('blob')
+  return new File([blob], filename, { type: 'application/pdf' })
+}
+
+/**
  * ヘッダー（タイトル、日付、利用者名）を描画
  */
 function drawHeader(pdf, report, margin, currentY, contentWidth, canvasWidthPx, pxPerMm, dpi) {

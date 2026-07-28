@@ -185,7 +185,7 @@ function drawBody(pdf, body, margin, currentY, contentWidth, canvasWidthPx, pxPe
 }
 
 /**
- * 写真とコメントを描画
+ * 写真とコメントを描画（写真の元のアスペクト比で幅いっぱいに表示）
  */
 async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, pageHeight) {
   const photoComments = report.photoComments || []
@@ -208,105 +208,58 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
     photoDataWithComments.map(({ photo }) => loadImageDimensions(photo))
   )
 
-  if (currentY + 10 > pageHeight - margin) {
-    pdf.addPage()
-    currentY = margin
-  }
-  currentY += 5
-
-  const layout = getPhotoLayout(photoDataWithComments.length, contentWidth)
   const commentHeightMm = 7
+  const gap = 3
 
-  // 各行ごとにコメント有無を判定し、行全体にコメント分のオフセットを適用
-  // まず、同じY座標（同じ行）の写真をグループ化する
-  const rowGroups = []
-  let currentRowY = null
-  let currentGroup = []
-
+  // 写真を1枚ずつ、実際のアスペクト比で幅いっぱいに配置
   for (let i = 0; i < photoDataWithComments.length; i++) {
-    const pos = layout.positions[i]
-    if (currentRowY === null || Math.abs(pos.y - currentRowY) > 1) {
-      if (currentGroup.length > 0) {
-        rowGroups.push(currentGroup)
-      }
-      currentGroup = [i]
-      currentRowY = pos.y
-    } else {
-      currentGroup.push(i)
-    }
-  }
-  if (currentGroup.length > 0) {
-    rowGroups.push(currentGroup)
-  }
+    const { photo, comment, annotations } = photoDataWithComments[i]
+    const imgProps = imageSizes[i]
+    const imgRatio = imgProps.width / imgProps.height
 
-  // 各行ごとに描画し、コメントがある行は行全体にオフセットを追加
-  let offsetY = 0
+    // 幅いっぱいに使い、高さはアスペクト比で計算
+    let photoW = contentWidth
+    let photoH = contentWidth / imgRatio
 
-  for (const group of rowGroups) {
-    // この行にコメントがあるか判定
-    const rowHasComment = group.some(i => photoDataWithComments[i].comment)
-    const rowCommentOffset = rowHasComment ? commentHeightMm : 0
-
-    for (const i of group) {
-      const { photo, comment, annotations } = photoDataWithComments[i]
-      const pos = layout.positions[i]
-      const photoY = currentY + pos.y + offsetY + rowCommentOffset
-
-      // 新しいページが必要か確認
-      if (photoY + pos.h > pageHeight - margin) {
-        pdf.addPage()
-        currentY = margin
-        offsetY = -(pos.y)
-        const newPhotoY = currentY + rowCommentOffset
-        
-        // コメントを写真の真上に描画
-        if (comment) {
-          drawCommentLabel(pdf, comment, margin + pos.x, currentY, pos.w, commentHeightMm, pxPerMm, dpi)
-        }
-
-        try {
-          // 写真のアスペクト比を保持して枠内に収める
-          const imgProps = imageSizes[i]
-          const fitted = fitImageInBox(pos.w, pos.h, imgProps.width, imgProps.height)
-          pdf.addImage(photo, 'JPEG', margin + pos.x + fitted.offsetX, newPhotoY + fitted.offsetY, fitted.w, fitted.h)
-          // 注釈を描画
-          if (annotations.length > 0) {
-            drawAnnotationsOnPhoto(pdf, annotations, margin + pos.x + fitted.offsetX, newPhotoY + fitted.offsetY, fitted.w, fitted.h)
-          }
-        } catch (error) {
-          pdf.setDrawColor(200, 200, 200)
-          pdf.rect(margin + pos.x, newPhotoY, pos.w, pos.h)
-        }
-        continue
-      }
-
-      // コメントを写真の真上に描画
-      if (comment) {
-        const commentY = photoY - commentHeightMm
-        drawCommentLabel(pdf, comment, margin + pos.x, commentY, pos.w, commentHeightMm, pxPerMm, dpi)
-      }
-
-      try {
-        // 写真のアスペクト比を保持して枠内に収める
-        const imgProps = imageSizes[i]
-        const fitted = fitImageInBox(pos.w, pos.h, imgProps.width, imgProps.height)
-        pdf.addImage(photo, 'JPEG', margin + pos.x + fitted.offsetX, photoY + fitted.offsetY, fitted.w, fitted.h)
-        // 注釈を描画
-        if (annotations.length > 0) {
-          drawAnnotationsOnPhoto(pdf, annotations, margin + pos.x + fitted.offsetX, photoY + fitted.offsetY, fitted.w, fitted.h)
-        }
-      } catch (error) {
-        pdf.setDrawColor(200, 200, 200)
-        pdf.rect(margin + pos.x, photoY, pos.w, pos.h)
-      }
+    // 高さがページに収まらない場合はページ高さに合わせる
+    const maxH = pageHeight - margin * 2 - (comment ? commentHeightMm : 0)
+    if (photoH > maxH) {
+      photoH = maxH
+      photoW = maxH * imgRatio
     }
 
-    // この行の分のオフセットを加算
-    offsetY += rowCommentOffset
-  }
+    // コメント分の高さ
+    const extraTop = comment ? commentHeightMm : 0
+    const totalNeeded = extraTop + photoH + gap
 
-  // 全体の高さ更新
-  currentY += layout.totalHeight + offsetY
+    // ページに収まるか確認
+    if (currentY + totalNeeded > pageHeight - margin) {
+      pdf.addPage()
+      currentY = margin
+    }
+
+    // コメントを写真の真上に描画
+    if (comment) {
+      drawCommentLabel(pdf, comment, margin, currentY, photoW, commentHeightMm, pxPerMm, dpi)
+      currentY += commentHeightMm
+    }
+
+    // 写真を中央寄せで描画
+    const photoX = margin + (contentWidth - photoW) / 2
+
+    try {
+      pdf.addImage(photo, 'JPEG', photoX, currentY, photoW, photoH)
+      // 注釈を描画
+      if (annotations.length > 0) {
+        drawAnnotationsOnPhoto(pdf, annotations, photoX, currentY, photoW, photoH)
+      }
+    } catch (error) {
+      pdf.setDrawColor(200, 200, 200)
+      pdf.rect(photoX, currentY, photoW, photoH)
+    }
+
+    currentY += photoH + gap
+  }
 
   return currentY
 }

@@ -6,9 +6,10 @@ const ANNOTATION_TYPES = [
   { id: 'rect', label: '□ 四角' },
   { id: 'circle', label: '○ 丸' },
   { id: 'cross', label: '× バツ' },
+  { id: 'text', label: 'A 文字' },
 ]
 
-const COLORS = ['#FF0000', '#0000FF', '#00AA00', '#FF8800', '#000000']
+const COLORS = ['#FF0000', '#0000FF', '#00AA00', '#FF8800', '#000000', '#FFFFFF']
 const SIZES = [
   { label: 'S', value: 4 },
   { label: 'M', value: 7 },
@@ -20,6 +21,11 @@ const STROKES = [
   { label: '中', value: 6 },
   { label: '太', value: 10 },
 ]
+const TEXT_SIZES = [
+  { label: '小', value: 12 },
+  { label: '中', value: 18 },
+  { label: '大', value: 26 },
+]
 
 function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   const [items, setItems] = useState(annotations)
@@ -27,6 +33,8 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   const [selectedColor, setSelectedColor] = useState('#FF0000')
   const [selectedSize, setSelectedSize] = useState(7)
   const [selectedStroke, setSelectedStroke] = useState(6)
+  const [textInput, setTextInput] = useState('')
+  const [selectedTextSize, setSelectedTextSize] = useState(18)
   const [activeIndex, setActiveIndex] = useState(null)
   const [editingIndex, setEditingIndex] = useState(null)
   const [mode, setMode] = useState(null)
@@ -36,17 +44,32 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   const containerRef = useRef(null)
 
   const addAnnotation = () => {
-    const newItem = {
-      type: selectedType,
-      color: selectedColor,
-      x: 50,
-      y: 50,
-      width: selectedSize * 2,
-      height: selectedSize * 1.5,
-      rotation: 0,
-      stroke: selectedStroke,
+    if (selectedType === 'text') {
+      if (!textInput.trim()) return
+      const newItem = {
+        type: 'text',
+        text: textInput,
+        color: selectedColor,
+        x: 50,
+        y: 50,
+        fontSize: selectedTextSize,
+        rotation: 0,
+      }
+      setItems([...items, newItem])
+      setTextInput('')
+    } else {
+      const newItem = {
+        type: selectedType,
+        color: selectedColor,
+        x: 50,
+        y: 50,
+        width: selectedSize * 2,
+        height: selectedSize * 1.5,
+        rotation: 0,
+        stroke: selectedStroke,
+      }
+      setItems([...items, newItem])
     }
-    setItems([...items, newItem])
   }
 
   const removeAnnotation = (index) => {
@@ -81,17 +104,18 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
     const pos = getPosition(e)
     const item = items[index]
 
-    const relX = (pos.x - item.x) / (item.width / 2)
-    const relY = (pos.y - item.y) / (item.height / 2)
-    const dist = Math.sqrt(relX * relX + relY * relY)
-
-    let autoMode
-    if (dist < 0.5) {
-      autoMode = 'move'
-    } else if (relX > 0.3 && relY < -0.3) {
-      autoMode = 'rotate'
-    } else {
-      autoMode = 'resize'
+    let autoMode = 'move'
+    if (item.type !== 'text') {
+      const relX = (pos.x - item.x) / (item.width / 2)
+      const relY = (pos.y - item.y) / (item.height / 2)
+      const dist = Math.sqrt(relX * relX + relY * relY)
+      if (dist >= 0.5) {
+        if (relX > 0.3 && relY < -0.3) {
+          autoMode = 'rotate'
+        } else {
+          autoMode = 'resize'
+        }
+      }
     }
 
     setActiveIndex(index)
@@ -147,7 +171,6 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   }
 
   const handlePointerUp = () => {
-    // ドラッグしなかった場合はタップとみなし、編集パネルを表示
     if (activeIndex !== null && !hasDragged) {
       setEditingIndex(activeIndex)
     }
@@ -163,6 +186,40 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
 
   const renderAnnotation = (item, index) => {
     const isEditing = editingIndex === index
+
+    if (item.type === 'text') {
+      const style = {
+        position: 'absolute',
+        left: `${item.x}%`,
+        top: `${item.y}%`,
+        transform: `translate(-50%, -50%) rotate(${item.rotation || 0}deg)`,
+        color: item.color,
+        fontSize: `${item.fontSize || 18}px`,
+        fontWeight: 'bold',
+        textShadow: item.color === '#000000' ? '0 0 3px white' : '0 0 3px rgba(0,0,0,0.7)',
+        whiteSpace: 'nowrap',
+        cursor: 'grab',
+        touchAction: 'none',
+        userSelect: 'none',
+        zIndex: activeIndex === index ? 20 : 10,
+        outline: isEditing ? '2px solid #3b82f6' : 'none',
+        padding: '2px 4px',
+      }
+      return (
+        <div key={index} style={style}
+          onMouseDown={(e) => handleMoveStart(e, index)}
+          onTouchStart={(e) => handleMoveStart(e, index)}
+        >
+          {item.text}
+          <button
+            onClick={(e) => { e.stopPropagation(); removeAnnotation(index) }}
+            className="absolute -top-2 -left-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+            style={{ fontSize: '14px', touchAction: 'none' }}
+          >×</button>
+        </div>
+      )
+    }
+
     const style = {
       position: 'absolute',
       left: `${item.x}%`,
@@ -188,25 +245,17 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
             {renderShape(item)}
           </svg>
         </div>
-
-        {/* 削除ボタン */}
         <button
           onClick={(e) => { e.stopPropagation(); removeAnnotation(index) }}
           className="absolute -top-2 -left-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold"
           style={{ touchAction: 'none', fontSize: '16px' }}
-        >
-          ×
-        </button>
-
-        {/* 回転ハンドル */}
+        >×</button>
         <div
           className="absolute -top-2 -right-2 w-7 h-7 bg-white border-2 border-green-500 rounded-full cursor-crosshair flex items-center justify-center"
           onMouseDown={(e) => handleRotateStart(e, index)}
           onTouchStart={(e) => handleRotateStart(e, index)}
           style={{ touchAction: 'none', fontSize: '14px' }}
-        >
-          ↻
-        </div>
+        >↻</div>
       </div>
     )
   }
@@ -215,12 +264,10 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
     const strokeWidth = item.stroke || 5
     switch (item.type) {
       case 'arrow':
-        return (
-          <>
-            <line x1="5" y1="50" x2="75" y2="50" stroke={item.color} strokeWidth={strokeWidth} />
-            <polygon points="70,30 95,50 70,70" fill={item.color} />
-          </>
-        )
+        return (<>
+          <line x1="5" y1="50" x2="75" y2="50" stroke={item.color} strokeWidth={strokeWidth} />
+          <polygon points="70,30 95,50 70,70" fill={item.color} />
+        </>)
       case 'line':
         return <line x1="5" y1="50" x2="95" y2="50" stroke={item.color} strokeWidth={strokeWidth} />
       case 'rect':
@@ -228,123 +275,131 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
       case 'circle':
         return <ellipse cx="50" cy="50" rx="45" ry="45" stroke={item.color} strokeWidth={strokeWidth} fill="none" />
       case 'cross':
-        return (
-          <>
-            <line x1="10" y1="10" x2="90" y2="90" stroke={item.color} strokeWidth={strokeWidth} />
-            <line x1="90" y1="10" x2="10" y2="90" stroke={item.color} strokeWidth={strokeWidth} />
-          </>
-        )
+        return (<>
+          <line x1="10" y1="10" x2="90" y2="90" stroke={item.color} strokeWidth={strokeWidth} />
+          <line x1="90" y1="10" x2="10" y2="90" stroke={item.color} strokeWidth={strokeWidth} />
+        </>)
       default:
         return null
     }
   }
 
+  // 編集パネルの内容
+  const renderEditPanel = () => {
+    if (editingIndex === null || !items[editingIndex]) return null
+    const item = items[editingIndex]
+    const isText = item.type === 'text'
+
+    return (
+      <div className="bg-yellow-50 px-2 py-2 flex flex-wrap items-center gap-2 border-b border-yellow-300">
+        <span className="text-xs font-bold text-yellow-800">
+          {isText ? `文字「${item.text}」を編集:` : `記号${editingIndex + 1}を編集:`}
+        </span>
+        <span className="text-xs text-gray-600">色:</span>
+        {COLORS.map((color) => (
+          <button
+            key={color}
+            onClick={() => updateAnnotation(editingIndex, { color })}
+            className={`w-5 h-5 rounded-full border-2 ${item.color === color ? 'border-gray-800 scale-110' : 'border-gray-300'}`}
+            style={{ backgroundColor: color }}
+          />
+        ))}
+        {isText ? (
+          <>
+            <span className="text-xs text-gray-600 ml-2">サイズ:</span>
+            {TEXT_SIZES.map((s) => (
+              <button
+                key={s.value}
+                onClick={() => updateAnnotation(editingIndex, { fontSize: s.value })}
+                className={`px-2 py-0.5 rounded text-xs border ${item.fontSize === s.value ? 'bg-yellow-600 text-white border-yellow-600' : 'bg-white text-gray-700 border-gray-300'}`}
+              >{s.label}</button>
+            ))}
+            <input
+              type="text"
+              value={item.text}
+              onChange={(e) => updateAnnotation(editingIndex, { text: e.target.value })}
+              className="ml-2 border border-gray-300 rounded px-2 py-0.5 text-xs w-24"
+            />
+          </>
+        ) : (
+          <>
+            <span className="text-xs text-gray-600 ml-2">太さ:</span>
+            {STROKES.map((s) => (
+              <button
+                key={s.value}
+                onClick={() => updateAnnotation(editingIndex, { stroke: s.value })}
+                className={`px-2 py-0.5 rounded text-xs border ${item.stroke === s.value ? 'bg-yellow-600 text-white border-yellow-600' : 'bg-white text-gray-700 border-gray-300'}`}
+              >{s.label}</button>
+            ))}
+          </>
+        )}
+        <button onClick={() => setEditingIndex(null)} className="ml-auto text-xs text-gray-500 underline">閉じる</button>
+      </div>
+    )
+  }
+
   return (
     <div className="fixed inset-0 bg-black/70 flex flex-col z-50">
-      {/* ツールバー - 記号選択 */}
+      {/* ツールバー */}
       <div className="bg-white p-2 flex flex-wrap items-center gap-1 shadow-lg">
-        <span className="text-xs font-medium text-gray-700 mr-1">記号:</span>
+        <span className="text-xs font-medium text-gray-700 mr-1">追加:</span>
         {ANNOTATION_TYPES.map((type) => (
           <button
             key={type.id}
             onClick={() => setSelectedType(type.id)}
-            className={`px-2 py-1 rounded text-xs border ${
-              selectedType === type.id
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-gray-100 text-gray-700 border-gray-300'
-            }`}
-          >
-            {type.label}
-          </button>
+            className={`px-2 py-1 rounded text-xs border ${selectedType === type.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-700 border-gray-300'}`}
+          >{type.label}</button>
         ))}
       </div>
 
-      {/* 色 + サイズ + 太さ + 追加 */}
+      {/* 色・サイズ・追加 */}
       <div className="bg-white px-2 pb-2 flex flex-wrap items-center gap-2 border-b">
-        <span className="text-xs font-medium text-gray-700">色:</span>
+        <span className="text-xs text-gray-600">色:</span>
         {COLORS.map((color) => (
           <button
             key={color}
             onClick={() => setSelectedColor(color)}
-            className={`w-5 h-5 rounded-full border-2 ${
-              selectedColor === color ? 'border-gray-800 scale-110' : 'border-gray-300'
-            }`}
+            className={`w-5 h-5 rounded-full border-2 ${selectedColor === color ? 'border-gray-800 scale-110' : 'border-gray-300'}`}
             style={{ backgroundColor: color }}
           />
         ))}
-        <span className="text-xs font-medium text-gray-700 ml-2">サイズ:</span>
-        {SIZES.map((size) => (
-          <button
-            key={size.value}
-            onClick={() => setSelectedSize(size.value)}
-            className={`px-2 py-0.5 rounded text-xs border ${
-              selectedSize === size.value
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-gray-100 text-gray-700 border-gray-300'
-            }`}
-          >
-            {size.label}
-          </button>
-        ))}
-        <span className="text-xs font-medium text-gray-700 ml-2">太さ:</span>
-        {STROKES.map((s) => (
-          <button
-            key={s.value}
-            onClick={() => setSelectedStroke(s.value)}
-            className={`px-2 py-0.5 rounded text-xs border ${
-              selectedStroke === s.value
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-gray-100 text-gray-700 border-gray-300'
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
-        <button
-          onClick={addAnnotation}
-          className="ml-auto bg-green-600 text-white px-3 py-1 rounded text-xs font-medium"
-        >
-          ＋追加
-        </button>
+        {selectedType === 'text' ? (
+          <>
+            <span className="text-xs text-gray-600 ml-2">サイズ:</span>
+            {TEXT_SIZES.map((s) => (
+              <button key={s.value} onClick={() => setSelectedTextSize(s.value)}
+                className={`px-2 py-0.5 rounded text-xs border ${selectedTextSize === s.value ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-700 border-gray-300'}`}
+              >{s.label}</button>
+            ))}
+            <input
+              type="text"
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              placeholder="文字を入力"
+              className="ml-2 border border-gray-300 rounded px-2 py-0.5 text-xs w-24"
+            />
+          </>
+        ) : (
+          <>
+            <span className="text-xs text-gray-600 ml-2">サイズ:</span>
+            {SIZES.map((size) => (
+              <button key={size.value} onClick={() => setSelectedSize(size.value)}
+                className={`px-2 py-0.5 rounded text-xs border ${selectedSize === size.value ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-700 border-gray-300'}`}
+              >{size.label}</button>
+            ))}
+            <span className="text-xs text-gray-600 ml-2">太さ:</span>
+            {STROKES.map((s) => (
+              <button key={s.value} onClick={() => setSelectedStroke(s.value)}
+                className={`px-2 py-0.5 rounded text-xs border ${selectedStroke === s.value ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 text-gray-700 border-gray-300'}`}
+              >{s.label}</button>
+            ))}
+          </>
+        )}
+        <button onClick={addAnnotation} className="ml-auto bg-green-600 text-white px-3 py-1 rounded text-xs font-medium">＋追加</button>
       </div>
 
-      {/* 選択中の記号の編集パネル */}
-      {editingIndex !== null && items[editingIndex] && (
-        <div className="bg-yellow-50 px-2 py-2 flex flex-wrap items-center gap-2 border-b border-yellow-300">
-          <span className="text-xs font-bold text-yellow-800">記号{editingIndex + 1}を編集:</span>
-          <span className="text-xs text-gray-600">色:</span>
-          {COLORS.map((color) => (
-            <button
-              key={color}
-              onClick={() => updateAnnotation(editingIndex, { color })}
-              className={`w-5 h-5 rounded-full border-2 ${
-                items[editingIndex].color === color ? 'border-gray-800 scale-110' : 'border-gray-300'
-              }`}
-              style={{ backgroundColor: color }}
-            />
-          ))}
-          <span className="text-xs text-gray-600 ml-2">太さ:</span>
-          {STROKES.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => updateAnnotation(editingIndex, { stroke: s.value })}
-              className={`px-2 py-0.5 rounded text-xs border ${
-                items[editingIndex].stroke === s.value
-                  ? 'bg-yellow-600 text-white border-yellow-600'
-                  : 'bg-white text-gray-700 border-gray-300'
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-          <button
-            onClick={() => setEditingIndex(null)}
-            className="ml-auto text-xs text-gray-500 underline"
-          >
-            閉じる
-          </button>
-        </div>
-      )}
+      {/* 編集パネル */}
+      {renderEditPanel()}
 
       {/* 写真エリア */}
       <div
@@ -357,26 +412,17 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         onTouchEnd={handlePointerUp}
         onClick={() => setEditingIndex(null)}
       >
-        <img
-          src={photo}
-          alt="注釈対象"
-          className="w-full h-full object-contain"
-          draggable={false}
-        />
+        <img src={photo} alt="注釈対象" className="w-full h-full object-contain" draggable={false} />
         {items.map((item, index) => renderAnnotation(item, index))}
         <p className="absolute bottom-1 left-1 text-white text-xs bg-black/50 px-2 py-0.5 rounded">
-          タップ: 編集 / 中央ドラッグ: 移動 / 端ドラッグ: サイズ / ↻: 回転
+          タップ: 編集 / ドラッグ: 移動・サイズ・回転
         </p>
       </div>
 
       {/* 下部ボタン */}
       <div className="bg-white p-2 flex justify-between">
-        <button onClick={onClose} className="btn-secondary text-sm">
-          キャンセル
-        </button>
-        <button onClick={handleSave} className="btn-primary text-sm">
-          ✓ 保存
-        </button>
+        <button onClick={onClose} className="btn-secondary text-sm">キャンセル</button>
+        <button onClick={handleSave} className="btn-primary text-sm">✓ 保存</button>
       </div>
     </div>
   )

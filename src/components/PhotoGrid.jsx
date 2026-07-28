@@ -165,23 +165,45 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
             {/* 注釈オーバーレイ */}
             {annotations && annotations.length > 0 && (
               <div className="absolute inset-0 pointer-events-none">
-                {annotations.map((ann, ai) => (
-                  <div
-                    key={ai}
-                    className="absolute"
-                    style={{
-                      left: `${ann.x}%`,
-                      top: `${ann.y}%`,
-                      width: `${ann.width}%`,
-                      height: `${ann.height}%`,
-                      transform: `translate(-50%, -50%) rotate(${ann.rotation || 0}deg)`,
-                    }}
-                  >
-                    <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-                      {renderAnnotationSVG(ann)}
-                    </svg>
-                  </div>
-                ))}
+                {annotations.map((ann, ai) => {
+                  if (ann.type === 'text') {
+                    return (
+                      <div
+                        key={ai}
+                        className="absolute"
+                        style={{
+                          left: `${ann.x}%`,
+                          top: `${ann.y}%`,
+                          transform: `translate(-50%, -50%) rotate(${ann.rotation || 0}deg)`,
+                          color: ann.color,
+                          fontSize: `${ann.fontSize || 18}px`,
+                          fontWeight: 'bold',
+                          textShadow: ann.color === '#000000' ? '0 0 3px white' : '0 0 3px rgba(0,0,0,0.7)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {ann.text}
+                      </div>
+                    )
+                  }
+                  return (
+                    <div
+                      key={ai}
+                      className="absolute"
+                      style={{
+                        left: `${ann.x}%`,
+                        top: `${ann.y}%`,
+                        width: `${ann.width}%`,
+                        height: `${ann.height}%`,
+                        transform: `translate(-50%, -50%) rotate(${ann.rotation || 0}deg)`,
+                      }}
+                    >
+                      <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+                        {renderAnnotationSVG(ann)}
+                      </svg>
+                    </div>
+                  )
+                })}
               </div>
             )}
             {/* 日付スタンプ */}

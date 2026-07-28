@@ -500,10 +500,47 @@ function fitImageInBox(boxW, boxH, imgW, imgH) {
  */
 function drawAnnotationsOnPhoto(pdf, annotations, photoX, photoY, photoW, photoH) {
   for (const ann of annotations) {
-    // 注釈の位置を写真座標系からPDF座標系に変換
-    // ann.x, ann.y はパーセント（0-100）で中心位置
     const centerX = photoX + (ann.x / 100) * photoW
     const centerY = photoY + (ann.y / 100) * photoH
+
+    // テキスト注釈
+    if (ann.type === 'text') {
+      const fontSize = (ann.fontSize || 18) * 0.7
+      const canvasW = fontSize * ann.text.length * 4
+      const canvasH = fontSize * 6
+      const canvas = document.createElement('canvas')
+      canvas.width = canvasW
+      canvas.height = canvasH
+      const ctx = canvas.getContext('2d')
+      ctx.clearRect(0, 0, canvasW, canvasH)
+
+      if (ann.rotation) {
+        ctx.translate(canvasW / 2, canvasH / 2)
+        ctx.rotate((ann.rotation * Math.PI) / 180)
+        ctx.translate(-canvasW / 2, -canvasH / 2)
+      }
+
+      ctx.font = `bold ${fontSize * 3}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
+      ctx.fillStyle = ann.color
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      if (ann.color !== '#000000') {
+        ctx.shadowColor = 'rgba(0,0,0,0.7)'
+        ctx.shadowBlur = fontSize * 0.4
+      } else {
+        ctx.shadowColor = 'rgba(255,255,255,0.7)'
+        ctx.shadowBlur = fontSize * 0.4
+      }
+      ctx.fillText(ann.text, canvasW / 2, canvasH / 2)
+
+      const textW = fontSize * ann.text.length * 0.7
+      const textH = fontSize * 1.2
+      const imgData = canvas.toDataURL('image/png')
+      pdf.addImage(imgData, 'PNG', centerX - textW / 2, centerY - textH / 2, textW, textH)
+      continue
+    }
+
+    // 記号注釈
     const annW = (ann.width / 100) * photoW
     const annH = (ann.height / 100) * photoH
     const strokeWidth = (ann.stroke || 5) * 0.15 // PDFのmm単位に変換

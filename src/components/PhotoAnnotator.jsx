@@ -21,11 +21,7 @@ const STROKES = [
   { label: '太', value: 10 },
 ]
 
-const EDIT_MODES = [
-  { id: 'move', label: '✋ 移動' },
-  { id: 'resize', label: '↔ サイズ' },
-  { id: 'rotate', label: '↻ 回転' },
-]
+const EDIT_MODES = [] // 不要になったが互換性のために残す
 
 function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   const [items, setItems] = useState(annotations)
@@ -33,7 +29,6 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   const [selectedColor, setSelectedColor] = useState('#FF0000')
   const [selectedSize, setSelectedSize] = useState(7)
   const [selectedStroke, setSelectedStroke] = useState(6)
-  const [editMode, setEditMode] = useState('move') // 'move', 'resize', 'rotate'
   const [activeIndex, setActiveIndex] = useState(null)
   const [mode, setMode] = useState(null) // 'move', 'resize', or 'rotate'
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })
@@ -76,10 +71,31 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   const handleMoveStart = (e, index) => {
     e.preventDefault()
     e.stopPropagation()
+    const pos = getPosition(e)
+    const item = items[index]
+
+    // タッチ位置が記号のどのエリアかで操作を自動決定
+    // 記号の中心からの相対位置で判定
+    const relX = (pos.x - item.x) / (item.width / 2)  // -1 ~ 1
+    const relY = (pos.y - item.y) / (item.height / 2) // -1 ~ 1
+    const dist = Math.sqrt(relX * relX + relY * relY)
+
+    let autoMode
+    if (dist < 0.5) {
+      // 中央付近 → 移動
+      autoMode = 'move'
+    } else if (relX > 0.3 && relY < -0.3) {
+      // 右上エリア → 回転
+      autoMode = 'rotate'
+    } else {
+      // 外側エリア → サイズ変更
+      autoMode = 'resize'
+    }
+
     setActiveIndex(index)
-    setMode(editMode)
-    setStartPos(getPosition(e))
-    setStartItem({ ...items[index] })
+    setMode(autoMode)
+    setStartPos(pos)
+    setStartItem({ ...item })
   }
 
   const handlePointerMove = (e) => {
@@ -136,7 +152,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
       transform: `translate(-50%, -50%) rotate(${item.rotation || 0}deg)`,
       width: `${item.width}%`,
       height: `${item.height}%`,
-      cursor: editMode === 'move' ? 'grab' : editMode === 'resize' ? 'nwse-resize' : 'crosshair',
+      cursor: 'grab',
       touchAction: 'none',
       userSelect: 'none',
       zIndex: activeIndex === index ? 20 : 10,
@@ -213,20 +229,6 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
             {type.label}
           </button>
         ))}
-        <span className="text-xs font-medium text-gray-700 ml-3">操作:</span>
-        {EDIT_MODES.map((m) => (
-          <button
-            key={m.id}
-            onClick={() => setEditMode(m.id)}
-            className={`px-2 py-1 rounded text-xs border ${
-              editMode === m.id
-                ? 'bg-orange-500 text-white border-orange-500'
-                : 'bg-gray-100 text-gray-700 border-gray-300'
-            }`}
-          >
-            {m.label}
-          </button>
-        ))}
       </div>
 
       {/* 色 + サイズ + 太さ + 追加 */}
@@ -296,7 +298,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         />
         {items.map((item, index) => renderAnnotation(item, index))}
         <p className="absolute bottom-1 left-1 text-white text-xs bg-black/50 px-2 py-0.5 rounded">
-          操作モードを選んで記号をドラッグ
+          中央ドラッグ: 移動 / 端ドラッグ: サイズ / 右上ドラッグ: 回転
         </p>
       </div>
 

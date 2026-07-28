@@ -136,6 +136,28 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
               alt={`写真 ${index + 1}`}
               className="w-full h-full object-cover"
             />
+            {/* 注釈オーバーレイ */}
+            {annotations && annotations.length > 0 && (
+              <div className="absolute inset-0 pointer-events-none">
+                {annotations.map((ann, ai) => (
+                  <div
+                    key={ai}
+                    className="absolute"
+                    style={{
+                      left: `${ann.x}%`,
+                      top: `${ann.y}%`,
+                      width: `${ann.width}%`,
+                      height: `${ann.height}%`,
+                      transform: `translate(-50%, -50%) rotate(${ann.rotation || 0}deg)`,
+                    }}
+                  >
+                    <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      {renderAnnotationSVG(ann)}
+                    </svg>
+                  </div>
+                ))}
+              </div>
+            )}
             <button
               onClick={handleRemove}
               className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
@@ -226,6 +248,34 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
       )}
     </div>
   )
+}
+
+function renderAnnotationSVG(ann) {
+  const strokeWidth = ann.stroke || 5
+  switch (ann.type) {
+    case 'arrow':
+      return (
+        <>
+          <line x1="5" y1="50" x2="75" y2="50" stroke={ann.color} strokeWidth={strokeWidth} />
+          <polygon points="70,30 95,50 70,70" fill={ann.color} />
+        </>
+      )
+    case 'line':
+      return <line x1="5" y1="50" x2="95" y2="50" stroke={ann.color} strokeWidth={strokeWidth} />
+    case 'rect':
+      return <rect x="5" y="5" width="90" height="90" stroke={ann.color} strokeWidth={strokeWidth} fill="none" />
+    case 'circle':
+      return <ellipse cx="50" cy="50" rx="45" ry="45" stroke={ann.color} strokeWidth={strokeWidth} fill="none" />
+    case 'cross':
+      return (
+        <>
+          <line x1="10" y1="10" x2="90" y2="90" stroke={ann.color} strokeWidth={strokeWidth} />
+          <line x1="90" y1="10" x2="10" y2="90" stroke={ann.color} strokeWidth={strokeWidth} />
+        </>
+      )
+    default:
+      return null
+  }
 }
 
 function getGridClass(count) {

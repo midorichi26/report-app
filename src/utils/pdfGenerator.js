@@ -473,18 +473,17 @@ function loadImageDimensions(dataUrl) {
 
 /**
  * 画像をボックス内にアスペクト比を保持して収める
+ * 幅いっぱいに使い、高さは比率に応じて決定
  */
 function fitImageInBox(boxW, boxH, imgW, imgH) {
-  const boxRatio = boxW / boxH
   const imgRatio = imgW / imgH
 
-  let w, h
-  if (imgRatio > boxRatio) {
-    // 横長の画像 → 幅に合わせる
-    w = boxW
-    h = boxW / imgRatio
-  } else {
-    // 縦長の画像 → 高さに合わせる
+  // 幅いっぱいに使う
+  let w = boxW
+  let h = boxW / imgRatio
+
+  // 高さがボックスを超える場合は高さに合わせる
+  if (h > boxH) {
     h = boxH
     w = boxH * imgRatio
   }

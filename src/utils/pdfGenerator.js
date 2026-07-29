@@ -763,9 +763,4 @@ function drawSeasonDecoration(pdf, pageWidth, pageHeight) {
     const imgData = canvas.toDataURL('image/png')
     pdf.addImage(imgData, 'PNG', positions[i].x, positions[i].y, 7, 7)
   }
-
-  // 上部に薄いカラーライン
-  pdf.setDrawColor(color[0], color[1], color[2])
-  pdf.setLineWidth(0.5)
-  pdf.line(0, 11, pageWidth, 11)
 }

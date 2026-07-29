@@ -373,6 +373,22 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
   )
 }
 
+function getBox3DPointsSimple(rotateX, rotateY) {
+  const radX = (rotateX * Math.PI) / 180
+  const radY = (rotateY * Math.PI) / 180
+  const vertices = [
+    [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+    [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1],
+  ]
+  const scale = 30
+  return vertices.map(([x, y, z]) => {
+    const x1 = x * Math.cos(radY) - z * Math.sin(radY)
+    const z1 = x * Math.sin(radY) + z * Math.cos(radY)
+    const y1 = y * Math.cos(radX) - z1 * Math.sin(radX)
+    return { x: 50 + x1 * scale, y: 50 + y1 * scale }
+  })
+}
+
 function renderAnnotationSVG(ann) {
   const strokeWidth = ann.stroke || 5
   switch (ann.type) {
@@ -387,17 +403,25 @@ function renderAnnotationSVG(ann) {
       return <line x1="5" y1="50" x2="95" y2="50" stroke={ann.color} strokeWidth={strokeWidth} />
     case 'rect':
       return <rect x="5" y="5" width="90" height="90" stroke={ann.color} strokeWidth={strokeWidth} fill="none" />
-    case 'box3d':
+    case 'box3d': {
+      const pts = getBox3DPointsSimple(ann.rotateX || 25, ann.rotateY || 35)
       return (
         <>
-          <rect x="5" y="30" width="55" height="65" stroke={ann.color} strokeWidth={strokeWidth} fill="none" />
-          <rect x="40" y="5" width="55" height="65" stroke={ann.color} strokeWidth={strokeWidth} fill="none" strokeDasharray={`${strokeWidth * 2}`} />
-          <line x1="5" y1="30" x2="40" y2="5" stroke={ann.color} strokeWidth={strokeWidth} />
-          <line x1="60" y1="30" x2="95" y2="5" stroke={ann.color} strokeWidth={strokeWidth} />
-          <line x1="5" y1="95" x2="40" y2="70" stroke={ann.color} strokeWidth={strokeWidth} strokeDasharray={`${strokeWidth * 2}`} />
-          <line x1="60" y1="95" x2="95" y2="70" stroke={ann.color} strokeWidth={strokeWidth} />
+          <line x1={pts[0].x} y1={pts[0].y} x2={pts[1].x} y2={pts[1].y} stroke={ann.color} strokeWidth={strokeWidth} />
+          <line x1={pts[1].x} y1={pts[1].y} x2={pts[2].x} y2={pts[2].y} stroke={ann.color} strokeWidth={strokeWidth} />
+          <line x1={pts[2].x} y1={pts[2].y} x2={pts[3].x} y2={pts[3].y} stroke={ann.color} strokeWidth={strokeWidth} />
+          <line x1={pts[3].x} y1={pts[3].y} x2={pts[0].x} y2={pts[0].y} stroke={ann.color} strokeWidth={strokeWidth} />
+          <line x1={pts[4].x} y1={pts[4].y} x2={pts[5].x} y2={pts[5].y} stroke={ann.color} strokeWidth={strokeWidth} strokeDasharray={`${strokeWidth * 2}`} />
+          <line x1={pts[5].x} y1={pts[5].y} x2={pts[6].x} y2={pts[6].y} stroke={ann.color} strokeWidth={strokeWidth} strokeDasharray={`${strokeWidth * 2}`} />
+          <line x1={pts[6].x} y1={pts[6].y} x2={pts[7].x} y2={pts[7].y} stroke={ann.color} strokeWidth={strokeWidth} strokeDasharray={`${strokeWidth * 2}`} />
+          <line x1={pts[7].x} y1={pts[7].y} x2={pts[4].x} y2={pts[4].y} stroke={ann.color} strokeWidth={strokeWidth} strokeDasharray={`${strokeWidth * 2}`} />
+          <line x1={pts[0].x} y1={pts[0].y} x2={pts[4].x} y2={pts[4].y} stroke={ann.color} strokeWidth={strokeWidth} />
+          <line x1={pts[1].x} y1={pts[1].y} x2={pts[5].x} y2={pts[5].y} stroke={ann.color} strokeWidth={strokeWidth} />
+          <line x1={pts[2].x} y1={pts[2].y} x2={pts[6].x} y2={pts[6].y} stroke={ann.color} strokeWidth={strokeWidth} strokeDasharray={`${strokeWidth * 2}`} />
+          <line x1={pts[3].x} y1={pts[3].y} x2={pts[7].x} y2={pts[7].y} stroke={ann.color} strokeWidth={strokeWidth} />
         </>
       )
+    }
     case 'circle':
       return <ellipse cx="50" cy="50" rx="45" ry="45" stroke={ann.color} strokeWidth={strokeWidth} fill="none" />
     case 'cross':

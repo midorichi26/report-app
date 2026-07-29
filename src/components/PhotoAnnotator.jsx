@@ -28,6 +28,40 @@ const TEXT_SIZES = [
   { label: '大', value: 26 },
 ]
 
+/**
+ * 3D直方体の8頂点を回転角度から計算してSVG座標(0-100)に変換
+ */
+function getBox3DPoints(rotateX, rotateY) {
+  const radX = (rotateX * Math.PI) / 180
+  const radY = (rotateY * Math.PI) / 180
+
+  // 単位立方体の8頂点 (-1〜1)
+  const vertices = [
+    [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], // 前面
+    [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1],     // 背面
+  ]
+
+  // Y軸回転 → X軸回転
+  const rotated = vertices.map(([x, y, z]) => {
+    // Y軸回転
+    const x1 = x * Math.cos(radY) - z * Math.sin(radY)
+    const z1 = x * Math.sin(radY) + z * Math.cos(radY)
+    // X軸回転
+    const y1 = y * Math.cos(radX) - z1 * Math.sin(radX)
+    const z2 = y * Math.sin(radX) + z1 * Math.cos(radX)
+    return [x1, y1, z2]
+  })
+
+  // 投影 (簡易パース)
+  const scale = 30
+  const points = rotated.map(([x, y]) => ({
+    x: 50 + x * scale,
+    y: 50 + y * scale,
+  }))
+
+  return points
+}
+
 function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   const [items, setItems] = useState(annotations)
   const [selectedType, setSelectedType] = useState('arrow')
@@ -68,6 +102,8 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         height: selectedSize * 1.5,
         rotation: 0,
         stroke: selectedStroke,
+        rotateX: selectedType === 'box3d' ? 25 : undefined,
+        rotateY: selectedType === 'box3d' ? 35 : undefined,
       }
       setItems([...items, newItem])
     }
@@ -282,18 +318,26 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         return <line x1="5" y1="50" x2="95" y2="50" stroke={item.color} strokeWidth={strokeWidth} />
       case 'rect':
         return <rect x="5" y="5" width="90" height="90" stroke={item.color} strokeWidth={strokeWidth} fill="none" />
-      case 'box3d':
+      case 'box3d': {
+        const pts = getBox3DPoints(item.rotateX || 25, item.rotateY || 35)
         return (<>
           {/* 前面 */}
-          <rect x="5" y="30" width="55" height="65" stroke={item.color} strokeWidth={strokeWidth} fill="none" />
+          <line x1={pts[0].x} y1={pts[0].y} x2={pts[1].x} y2={pts[1].y} stroke={item.color} strokeWidth={strokeWidth} />
+          <line x1={pts[1].x} y1={pts[1].y} x2={pts[2].x} y2={pts[2].y} stroke={item.color} strokeWidth={strokeWidth} />
+          <line x1={pts[2].x} y1={pts[2].y} x2={pts[3].x} y2={pts[3].y} stroke={item.color} strokeWidth={strokeWidth} />
+          <line x1={pts[3].x} y1={pts[3].y} x2={pts[0].x} y2={pts[0].y} stroke={item.color} strokeWidth={strokeWidth} />
           {/* 背面 */}
-          <rect x="40" y="5" width="55" height="65" stroke={item.color} strokeWidth={strokeWidth} fill="none" strokeDasharray={`${strokeWidth * 2}`} />
-          {/* 4つの奥行き線 */}
-          <line x1="5" y1="30" x2="40" y2="5" stroke={item.color} strokeWidth={strokeWidth} />
-          <line x1="60" y1="30" x2="95" y2="5" stroke={item.color} strokeWidth={strokeWidth} />
-          <line x1="5" y1="95" x2="40" y2="70" stroke={item.color} strokeWidth={strokeWidth} strokeDasharray={`${strokeWidth * 2}`} />
-          <line x1="60" y1="95" x2="95" y2="70" stroke={item.color} strokeWidth={strokeWidth} />
+          <line x1={pts[4].x} y1={pts[4].y} x2={pts[5].x} y2={pts[5].y} stroke={item.color} strokeWidth={strokeWidth} strokeDasharray={`${strokeWidth * 2}`} />
+          <line x1={pts[5].x} y1={pts[5].y} x2={pts[6].x} y2={pts[6].y} stroke={item.color} strokeWidth={strokeWidth} strokeDasharray={`${strokeWidth * 2}`} />
+          <line x1={pts[6].x} y1={pts[6].y} x2={pts[7].x} y2={pts[7].y} stroke={item.color} strokeWidth={strokeWidth} strokeDasharray={`${strokeWidth * 2}`} />
+          <line x1={pts[7].x} y1={pts[7].y} x2={pts[4].x} y2={pts[4].y} stroke={item.color} strokeWidth={strokeWidth} strokeDasharray={`${strokeWidth * 2}`} />
+          {/* 接続線 */}
+          <line x1={pts[0].x} y1={pts[0].y} x2={pts[4].x} y2={pts[4].y} stroke={item.color} strokeWidth={strokeWidth} />
+          <line x1={pts[1].x} y1={pts[1].y} x2={pts[5].x} y2={pts[5].y} stroke={item.color} strokeWidth={strokeWidth} />
+          <line x1={pts[2].x} y1={pts[2].y} x2={pts[6].x} y2={pts[6].y} stroke={item.color} strokeWidth={strokeWidth} strokeDasharray={`${strokeWidth * 2}`} />
+          <line x1={pts[3].x} y1={pts[3].y} x2={pts[7].x} y2={pts[7].y} stroke={item.color} strokeWidth={strokeWidth} />
         </>)
+      }
       case 'circle':
         return <ellipse cx="50" cy="50" rx="45" ry="45" stroke={item.color} strokeWidth={strokeWidth} fill="none" />
       case 'cross':
@@ -342,6 +386,29 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
               onChange={(e) => updateAnnotation(editingIndex, { text: e.target.value })}
               className="ml-2 border border-gray-300 rounded px-2 py-0.5 text-xs w-24"
             />
+          </>
+        ) : item.type === 'box3d' ? (
+          <>
+            <span className="text-xs text-gray-600 ml-1">太さ:</span>
+            {STROKES.map((s) => (
+              <button
+                key={s.value}
+                onClick={() => updateAnnotation(editingIndex, { stroke: s.value })}
+                className={`px-2 py-0.5 rounded text-xs border ${item.stroke === s.value ? 'bg-yellow-600 text-white border-yellow-600' : 'bg-white text-gray-700 border-gray-300'}`}
+              >{s.label}</button>
+            ))}
+            <div className="flex items-center gap-1 ml-2 w-full mt-1">
+              <span className="text-xs text-gray-600 whitespace-nowrap">横回転:</span>
+              <input type="range" min="-90" max="90" value={item.rotateY || 35}
+                onChange={(e) => updateAnnotation(editingIndex, { rotateY: Number(e.target.value) })}
+                className="flex-1 h-4"
+              />
+              <span className="text-xs text-gray-600 whitespace-nowrap ml-2">縦回転:</span>
+              <input type="range" min="-90" max="90" value={item.rotateX || 25}
+                onChange={(e) => updateAnnotation(editingIndex, { rotateX: Number(e.target.value) })}
+                className="flex-1 h-4"
+              />
+            </div>
           </>
         ) : (
           <>

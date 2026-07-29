@@ -30,6 +30,15 @@ export async function generatePDF(report) {
   // --- 写真 ---
   currentY = await drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, pageHeight)
 
+  // --- 季節テーマデコレーション ---
+  if (report.seasonThemeEnabled) {
+    const pageCount0 = pdf.getNumberOfPages()
+    for (let i = 1; i <= pageCount0; i++) {
+      pdf.setPage(i)
+      drawSeasonDecoration(pdf, pageWidth, pageHeight)
+    }
+  }
+
   // --- フッター ---
   const pageCount = pdf.getNumberOfPages()
   for (let i = 1; i <= pageCount; i++) {
@@ -70,6 +79,15 @@ export async function generatePDFFile(report) {
   }
 
   currentY = await drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, dpi, pageHeight)
+
+  // --- 季節テーマデコレーション ---
+  if (report.seasonThemeEnabled) {
+    const pageCount0 = pdf.getNumberOfPages()
+    for (let i = 1; i <= pageCount0; i++) {
+      pdf.setPage(i)
+      drawSeasonDecoration(pdf, pageWidth, pageHeight)
+    }
+  }
 
   const pageCount = pdf.getNumberOfPages()
   for (let i = 1; i <= pageCount; i++) {
@@ -694,4 +712,60 @@ function drawDateStamp(pdf, dateStamp, photoX, photoY, photoW, photoH, pxPerMm, 
   const stampH = (canvas.height / pxPerMm) * 0.5
   const imgData = canvas.toDataURL('image/png')
   pdf.addImage(imgData, 'PNG', x - stampW / 2, y - stampH / 2, stampW, stampH)
+}
+
+
+/**
+ * 季節デコレーションをPDFページに描画
+ */
+function drawSeasonDecoration(pdf, pageWidth, pageHeight) {
+  const month = new Date().getMonth() + 1
+  let decorations, color
+
+  if (month >= 3 && month <= 5) {
+    decorations = ['🌸', '🌷', '🦋']
+    color = [244, 114, 182] // pink
+  } else if (month >= 6 && month <= 8) {
+    decorations = ['🍉', '🌊', '🐚', '☀️']
+    color = [6, 182, 212] // cyan
+  } else if (month >= 9 && month <= 11) {
+    decorations = ['🍁', '🍂', '🌾']
+    color = [249, 115, 22] // orange
+  } else {
+    decorations = ['❄️', '⛄', '✨']
+    color = [79, 70, 229] // indigo
+  }
+
+  // Canvasで絵文字を描画して画像としてPDFに配置
+  const canvas = document.createElement('canvas')
+  canvas.width = 60
+  canvas.height = 60
+  const ctx = canvas.getContext('2d')
+
+  // 四隅と辺にデコレーションを配置
+  const positions = [
+    { x: 3, y: 3 },
+    { x: pageWidth - 10, y: 3 },
+    { x: 3, y: pageHeight - 12 },
+    { x: pageWidth - 10, y: pageHeight - 12 },
+    { x: pageWidth / 2 - 3, y: 3 },
+    { x: pageWidth / 2 - 3, y: pageHeight - 12 },
+  ]
+
+  for (let i = 0; i < positions.length; i++) {
+    const emoji = decorations[i % decorations.length]
+    ctx.clearRect(0, 0, 60, 60)
+    ctx.font = '40px serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(emoji, 30, 30)
+
+    const imgData = canvas.toDataURL('image/png')
+    pdf.addImage(imgData, 'PNG', positions[i].x, positions[i].y, 7, 7)
+  }
+
+  // 上部に薄いカラーライン
+  pdf.setDrawColor(color[0], color[1], color[2])
+  pdf.setLineWidth(0.5)
+  pdf.line(0, 11, pageWidth, 11)
 }

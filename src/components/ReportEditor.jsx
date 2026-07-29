@@ -3,6 +3,20 @@ import PhotoGrid from './PhotoGrid.jsx'
 import PrintModal from './PrintModal.jsx'
 import { generatePDF, generatePDFFile } from '../utils/pdfGenerator.js'
 
+// 季節テーマ取得（App.jsxと同じロジック）
+function getSeasonTheme() {
+  const month = new Date().getMonth() + 1
+  if (month >= 3 && month <= 5) {
+    return { name: '春', emoji: '🌸', decorations: ['🌸', '🌷', '🐝', '🦋'], color: '#F472B6' }
+  } else if (month >= 6 && month <= 8) {
+    return { name: '夏', emoji: '🏖️', decorations: ['🍉', '🌊', '🐚', '☀️', '🌺'], color: '#06B6D4' }
+  } else if (month >= 9 && month <= 11) {
+    return { name: '秋', emoji: '🍁', decorations: ['🍁', '🍂', '🌾', '🎑'], color: '#F97316' }
+  } else {
+    return { name: '冬', emoji: '⛄', decorations: ['❄️', '⛄', '🎄', '✨'], color: '#4F46E5' }
+  }
+}
+
 function ReportEditor({ report, onSave, onBack }) {
   const [formData, setFormData] = useState({
     ...report,
@@ -10,6 +24,7 @@ function ReportEditor({ report, onSave, onBack }) {
     photoAnnotations: report.photoAnnotations || Array(report.photoCount).fill([]),
     dateStamp: report.dateStamp || { text: '', color: '#FFFFFF', size: 14 },
     photoDateStamps: report.photoDateStamps || Array(report.photoCount).fill(null),
+    seasonThemeEnabled: report.seasonThemeEnabled ?? false,
   })
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
@@ -125,6 +140,22 @@ function ReportEditor({ report, onSave, onBack }) {
             rows={5}
             className="input-field resize-y"
           />
+        </div>
+
+        {/* 季節テーマ ON/OFF */}
+        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <span className="text-sm font-medium text-gray-700">
+            {getSeasonTheme().emoji} 季節デザイン（{getSeasonTheme().name}）
+          </span>
+          <button
+            onClick={() => handleChange('seasonThemeEnabled', !formData.seasonThemeEnabled)}
+            className={`relative w-12 h-6 rounded-full transition-colors ${formData.seasonThemeEnabled ? 'bg-blue-600' : 'bg-gray-300'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${formData.seasonThemeEnabled ? 'translate-x-6' : ''}`} />
+          </button>
+          <span className="text-xs text-gray-500">
+            {formData.seasonThemeEnabled ? 'PDFに反映する' : 'PDFに反映しない'}
+          </span>
         </div>
       </div>
 

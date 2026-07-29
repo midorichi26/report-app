@@ -261,12 +261,19 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
   let offsetY = 0
 
   for (const group of rowGroups) {
-    const rowHasComment = group.some(i => photoDataWithComments[i].comment)
-    const rowCommentOffset = rowHasComment ? commentHeightMm : 0
+    // この行のコメントの最大高さを計算
+    const getCommentHeight = (comment) => {
+      if (!comment) return 0
+      const lines = comment.split('\n')
+      return Math.max(commentHeightMm, lines.length * 5)
+    }
+    const maxCommentH = Math.max(...group.map(i => getCommentHeight(photoDataWithComments[i].comment)))
+    const rowCommentOffset = maxCommentH
 
     for (const i of group) {
       const { photo, comment, annotations, dateStamp } = photoDataWithComments[i]
       const pos = layout.positions[i]
+      const thisCommentH = getCommentHeight(comment)
       const photoY = currentY + pos.y + offsetY + rowCommentOffset
 
       // 新しいページが必要か確認
@@ -274,10 +281,10 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
         pdf.addPage()
         currentY = margin
         offsetY = -(pos.y)
-        const newPhotoY = currentY + rowCommentOffset
+        const newPhotoY = currentY + thisCommentH
 
         if (comment) {
-          drawCommentLabel(pdf, comment, margin + pos.x, currentY, pos.w, commentHeightMm, pxPerMm, dpi)
+          drawCommentLabel(pdf, comment, margin + pos.x, currentY, pos.w, thisCommentH, pxPerMm, dpi)
         }
 
         try {
@@ -287,7 +294,6 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
           if (annotations.length > 0) {
             drawAnnotationsOnPhoto(pdf, annotations, margin + pos.x + fitted.offsetX, newPhotoY + fitted.offsetY, fitted.w, fitted.h)
           }
-          // 日付スタンプ
           if (dateStamp && dateStamp.text) {
             drawDateStamp(pdf, dateStamp, margin + pos.x + fitted.offsetX, newPhotoY + fitted.offsetY, fitted.w, fitted.h, pxPerMm, dpi)
           }
@@ -299,8 +305,8 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
       }
 
       if (comment) {
-        const commentY = photoY - commentHeightMm
-        drawCommentLabel(pdf, comment, margin + pos.x, commentY, pos.w, commentHeightMm, pxPerMm, dpi)
+        const commentY = photoY - thisCommentH
+        drawCommentLabel(pdf, comment, margin + pos.x, commentY, pos.w, thisCommentH, pxPerMm, dpi)
       }
 
       try {

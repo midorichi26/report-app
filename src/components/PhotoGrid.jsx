@@ -401,6 +401,8 @@ function renderAnnotationSVG(ann) {
       )
     case 'line':
       return <line x1="5" y1="50" x2="95" y2="50" stroke={ann.color} strokeWidth={strokeWidth} />
+    case 'dashed':
+      return <line x1="5" y1="50" x2="95" y2="50" stroke={ann.color} strokeWidth={strokeWidth} strokeDasharray={`${strokeWidth * 2} ${strokeWidth * 2}`} />
     case 'rect':
       return <rect x="5" y="5" width="90" height="90" stroke={ann.color} strokeWidth={strokeWidth} fill="none" />
     case 'box3d': {

@@ -593,6 +593,14 @@ function drawAnnotationsOnPhoto(pdf, annotations, photoX, photoY, photoW, photoH
         ctx.lineTo(canvasSize - 10, canvasSize / 2)
         ctx.stroke()
         break
+      case 'dashed':
+        ctx.setLineDash([sw * 3, sw * 3])
+        ctx.beginPath()
+        ctx.moveTo(10, canvasSize / 2)
+        ctx.lineTo(canvasSize - 10, canvasSize / 2)
+        ctx.stroke()
+        ctx.setLineDash([])
+        break
       case 'rect':
         ctx.strokeRect(10, 10, canvasSize - 20, canvasSize - 20)
         break

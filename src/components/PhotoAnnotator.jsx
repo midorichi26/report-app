@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react'
 const ANNOTATION_TYPES = [
   { id: 'arrow', label: '→ 矢印' },
   { id: 'line', label: '― 直線' },
+  { id: 'dashed', label: '┄ 点線' },
   { id: 'rect', label: '□ 四角' },
   { id: 'box3d', label: '⬡ 立体' },
   { id: 'circle', label: '○ 丸' },
@@ -316,6 +317,8 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         </>)
       case 'line':
         return <line x1="5" y1="50" x2="95" y2="50" stroke={item.color} strokeWidth={strokeWidth} />
+      case 'dashed':
+        return <line x1="5" y1="50" x2="95" y2="50" stroke={item.color} strokeWidth={strokeWidth} strokeDasharray={`${strokeWidth * 2} ${strokeWidth * 2}`} />
       case 'rect':
         return <rect x="5" y="5" width="90" height="90" stroke={item.color} strokeWidth={strokeWidth} fill="none" />
       case 'box3d': {

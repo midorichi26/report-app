@@ -133,7 +133,7 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
       {/* 写真スロット */}
       <div
         ref={slotRef}
-        className="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors bg-gray-50 aspect-[3/2]"
+        className="relative border-2 border-dashed border-gray-300 rounded-lg overflow-hidden cursor-pointer hover:border-blue-400 transition-colors bg-gray-50"
         onClick={handleSlotClick}
         onMouseMove={(e) => {
           if (!isDraggingStamp || !slotRef.current || !dateStamp) return
@@ -160,7 +160,7 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
             <img
               src={photo}
               alt={`写真 ${index + 1}`}
-              className="w-full h-full object-contain bg-gray-100"
+              className="w-full h-auto object-contain bg-gray-100"
             />
             {/* 注釈オーバーレイ */}
             {annotations && annotations.length > 0 && (
@@ -307,7 +307,7 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
             </div>
           </>
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+          <div className="w-full flex flex-col items-center justify-center text-gray-400 py-12">
             <span className="text-3xl mb-1">📷</span>
             <span className="text-sm">写真{index + 1}を追加</span>
             <span className="text-xs mt-1">タップして選択</span>

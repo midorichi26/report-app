@@ -742,25 +742,32 @@ function drawSeasonDecoration(pdf, pageWidth, pageHeight) {
   canvas.height = 60
   const ctx = canvas.getContext('2d')
 
-  // 四隅と辺にデコレーションを配置
-  const positions = [
-    { x: 3, y: 3 },
-    { x: pageWidth - 10, y: 3 },
-    { x: 3, y: pageHeight - 12 },
-    { x: pageWidth - 10, y: pageHeight - 12 },
-    { x: pageWidth / 2 - 3, y: 3 },
-    { x: pageWidth / 2 - 3, y: pageHeight - 12 },
-  ]
+  // タイトルの両サイドにデコレーションを配置（左3つ、右3つ）
+  const titleY = 12 // タイトルのおおよそのY位置(mm)
+  const emojiSize = 6
+  const gap = 1
 
-  for (let i = 0; i < positions.length; i++) {
+  // 左側3つ
+  for (let i = 0; i < 3; i++) {
     const emoji = decorations[i % decorations.length]
     ctx.clearRect(0, 0, 60, 60)
     ctx.font = '40px serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText(emoji, 30, 30)
-
     const imgData = canvas.toDataURL('image/png')
-    pdf.addImage(imgData, 'PNG', positions[i].x, positions[i].y, 7, 7)
+    pdf.addImage(imgData, 'PNG', 3 + i * (emojiSize + gap), titleY, emojiSize, emojiSize)
+  }
+
+  // 右側3つ
+  for (let i = 0; i < 3; i++) {
+    const emoji = decorations[(i + 1) % decorations.length]
+    ctx.clearRect(0, 0, 60, 60)
+    ctx.font = '40px serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(emoji, 30, 30)
+    const imgData = canvas.toDataURL('image/png')
+    pdf.addImage(imgData, 'PNG', pageWidth - 3 - (3 - i) * (emojiSize + gap), titleY, emojiSize, emojiSize)
   }
 }

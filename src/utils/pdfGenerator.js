@@ -165,7 +165,7 @@ function drawHeader(pdf, report, margin, currentY, contentWidth, canvasWidthPx, 
  * 本文を描画
  */
 function drawBody(pdf, body, margin, currentY, contentWidth, canvasWidthPx, pxPerMm, dpi, pageHeight) {
-  const bodyLines = wrapText(body, 35)
+  const bodyLines = wrapText(body, 50)
   const lineHeightMm = 9
   const lineHeightPx = lineHeightMm * pxPerMm
 
@@ -331,8 +331,11 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
  * コメントラベルを描画するヘルパー
  */
 function drawCommentLabel(pdf, comment, x, y, width, height, pxPerMm, dpi) {
+  const lines = comment.split('\n')
+  const lineCount = lines.length
+  const actualHeight = Math.max(height, lineCount * 5)
   const commentWidthPx = width * pxPerMm
-  const commentHeightPx = height * pxPerMm
+  const commentHeightPx = actualHeight * pxPerMm
   const commentCanvas = document.createElement('canvas')
   commentCanvas.width = commentWidthPx
   commentCanvas.height = commentHeightPx
@@ -343,10 +346,15 @@ function drawCommentLabel(pdf, comment, x, y, width, height, pxPerMm, dpi) {
   cCtx.font = `bold ${13 * dpi}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif`
   cCtx.fillStyle = '#333333'
   cCtx.textAlign = 'center'
-  cCtx.fillText(comment, commentWidthPx / 2, commentHeightPx * 0.7)
+
+  const lineHeight = commentHeightPx / (lineCount + 0.5)
+  for (let i = 0; i < lines.length; i++) {
+    cCtx.fillText(lines[i], commentWidthPx / 2, lineHeight * (i + 0.8))
+  }
 
   const commentImg = commentCanvas.toDataURL('image/png')
-  pdf.addImage(commentImg, 'PNG', x, y, width, height)
+  pdf.addImage(commentImg, 'PNG', x, y, width, actualHeight)
+  return actualHeight
 }
 
 /**

@@ -103,18 +103,18 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
     <div className="flex flex-col gap-1">
       {/* コメント欄（写真の上） */}
       {showComment ? (
-        <div className="flex items-center gap-1">
-          <input
-            type="text"
+        <div className="flex items-start gap-1">
+          <textarea
             value={comment}
             onChange={(e) => onCommentChange(index, e.target.value)}
             placeholder={`写真${index + 1}のコメント`}
-            className="input-field text-base flex-1 text-center"
+            className="input-field text-base flex-1 text-center resize-y"
+            rows={2}
             onClick={(e) => e.stopPropagation()}
           />
           <button
             onClick={handleRemoveComment}
-            className="text-red-400 hover:text-red-600 text-lg px-1 shrink-0"
+            className="text-red-400 hover:text-red-600 text-lg px-1 shrink-0 mt-1"
             aria-label="コメント欄を削除"
             title="コメント欄を削除"
           >

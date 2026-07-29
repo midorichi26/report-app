@@ -726,7 +726,7 @@ function drawSeasonDecoration(pdf, pageWidth, pageHeight) {
     decorations = ['🌸', '🌷', '🦋']
     color = [244, 114, 182] // pink
   } else if (month >= 6 && month <= 8) {
-    decorations = ['🍉', '🌊', '🐚', '☀️']
+    decorations = ['🍉', '🌊', '🌻', '☀️']
     color = [6, 182, 212] // cyan
   } else if (month >= 9 && month <= 11) {
     decorations = ['🍁', '🍂', '🌾']
@@ -743,8 +743,8 @@ function drawSeasonDecoration(pdf, pageWidth, pageHeight) {
   const ctx = canvas.getContext('2d')
 
   // タイトルの両サイドにデコレーションを配置（左3つ、右3つ）
-  const titleY = 12 // タイトルのおおよそのY位置(mm)
-  const emojiSize = 6
+  const titleY = 10 // タイトルのおおよそのY位置(mm)
+  const emojiSize = 10
   const gap = 1
 
   // 左側3つ

@@ -26,7 +26,7 @@ function getSeasonTheme() {
       headerTextBtn: 'text-cyan-600',
       bodyBg: 'bg-cyan-50',
       emoji: '🏖️',
-      decorations: ['🍉', '🌊', '🌻', '☀️', '🌺'],
+      decorations: ['🍉', '🌊', '🐚', '☀️', '🌻', '🌺'],
     }
   } else if (month >= 9 && month <= 11) {
     // 秋 (9-11月)

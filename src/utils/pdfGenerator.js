@@ -726,7 +726,7 @@ function drawSeasonDecoration(pdf, pageWidth, pageHeight) {
     decorations = ['🌸', '🌷', '🦋']
     color = [244, 114, 182] // pink
   } else if (month >= 6 && month <= 8) {
-    decorations = ['🍉', '🌊', '🌻', '☀️']
+    decorations = ['🍉', '🌊', '🐚', '☀️', '🌻', '🌺']
     color = [6, 182, 212] // cyan
   } else if (month >= 9 && month <= 11) {
     decorations = ['🍁', '🍂', '🌾']
@@ -749,7 +749,7 @@ function drawSeasonDecoration(pdf, pageWidth, pageHeight) {
 
   // 左側3つ
   for (let i = 0; i < 3; i++) {
-    const emoji = decorations[i % decorations.length]
+    const emoji = decorations[i]
     ctx.clearRect(0, 0, 60, 60)
     ctx.font = '40px serif'
     ctx.textAlign = 'center'
@@ -761,7 +761,7 @@ function drawSeasonDecoration(pdf, pageWidth, pageHeight) {
 
   // 右側3つ
   for (let i = 0; i < 3; i++) {
-    const emoji = decorations[(i + 1) % decorations.length]
+    const emoji = decorations[3 + i]
     ctx.clearRect(0, 0, 60, 60)
     ctx.font = '40px serif'
     ctx.textAlign = 'center'

@@ -137,7 +137,9 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
         onClick={handleSlotClick}
         onMouseMove={(e) => {
           if (!isDraggingStamp || !slotRef.current || !dateStamp) return
-          const rect = slotRef.current.getBoundingClientRect()
+          // img要素の実際の表示領域を基準に計算
+          const img = slotRef.current.querySelector('img')
+          const rect = img ? img.getBoundingClientRect() : slotRef.current.getBoundingClientRect()
           const x = ((e.clientX - rect.left) / rect.width) * 100
           const y = ((e.clientY - rect.top) / rect.height) * 100
           onDateStampChange(index, { ...dateStamp, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) })
@@ -147,7 +149,8 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
         onTouchMove={(e) => {
           if (!isDraggingStamp || !slotRef.current || !dateStamp) return
           e.preventDefault()
-          const rect = slotRef.current.getBoundingClientRect()
+          const img = slotRef.current.querySelector('img')
+          const rect = img ? img.getBoundingClientRect() : slotRef.current.getBoundingClientRect()
           const touch = e.touches[0]
           const x = ((touch.clientX - rect.left) / rect.width) * 100
           const y = ((touch.clientY - rect.top) / rect.height) * 100
@@ -441,19 +444,19 @@ function renderAnnotationSVG(ann) {
 function getGridClass(count) {
   switch (count) {
     case 1:
-      return 'grid grid-cols-1 gap-3 max-w-md mx-auto'
+      return 'grid grid-cols-1 gap-4'
     case 2:
-      return 'grid grid-cols-1 sm:grid-cols-2 gap-3'
+      return 'grid grid-cols-1 gap-4'
     case 3:
-      return 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'
+      return 'grid grid-cols-1 gap-4'
     case 4:
-      return 'grid grid-cols-2 gap-3'
+      return 'grid grid-cols-1 gap-4'
     case 5:
-      return 'grid grid-cols-2 sm:grid-cols-3 gap-3'
+      return 'grid grid-cols-1 gap-4'
     case 6:
-      return 'grid grid-cols-2 sm:grid-cols-3 gap-3'
+      return 'grid grid-cols-1 gap-4'
     default:
-      return 'grid grid-cols-2 gap-3'
+      return 'grid grid-cols-1 gap-4'
   }
 }
 

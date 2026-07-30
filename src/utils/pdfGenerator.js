@@ -292,6 +292,7 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
           const fitted = fitImageInBox(pos.w, pos.h, imgProps.width, imgProps.height)
           pdf.addImage(photo, 'JPEG', margin + pos.x + fitted.offsetX, newPhotoY + fitted.offsetY, fitted.w, fitted.h)
           if (annotations.length > 0) {
+            // 注釈は写真の実際の描画領域に対して配置
             drawAnnotationsOnPhoto(pdf, annotations, margin + pos.x + fitted.offsetX, newPhotoY + fitted.offsetY, fitted.w, fitted.h)
           }
           if (dateStamp && dateStamp.text) {
@@ -314,6 +315,7 @@ async function drawPhotos(pdf, report, margin, currentY, contentWidth, pxPerMm, 
         const fitted = fitImageInBox(pos.w, pos.h, imgProps.width, imgProps.height)
         pdf.addImage(photo, 'JPEG', margin + pos.x + fitted.offsetX, photoY + fitted.offsetY, fitted.w, fitted.h)
         if (annotations.length > 0) {
+          // 注釈は写真の実際の描画領域に対して配置
           drawAnnotationsOnPhoto(pdf, annotations, margin + pos.x + fitted.offsetX, photoY + fitted.offsetY, fitted.w, fitted.h)
         }
         // 日付スタンプ

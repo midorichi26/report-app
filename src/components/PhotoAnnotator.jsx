@@ -122,7 +122,10 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
   }
 
   const getPosition = (e) => {
-    const rect = containerRef.current.getBoundingClientRect()
+    // 写真の実際の表示領域を基準に計算する
+    const img = containerRef.current.querySelector('img')
+    if (!img) return { x: 50, y: 50 }
+    const rect = img.getBoundingClientRect()
     let clientX, clientY
     if (e.touches) {
       clientX = e.touches[0].clientX
@@ -501,8 +504,7 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
 
       {/* 写真エリア */}
       <div
-        ref={containerRef}
-        className="flex-1 relative overflow-hidden m-1"
+        className="flex-1 overflow-auto m-1 flex items-center justify-center"
         onMouseMove={handlePointerMove}
         onMouseUp={handlePointerUp}
         onMouseLeave={handlePointerUp}
@@ -510,11 +512,10 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
         onTouchEnd={handlePointerUp}
         onClick={handleContainerClick}
       >
-        <img src={photo} alt="注釈対象" className="w-full h-full object-contain" draggable={false} />
-        {items.map((item, index) => renderAnnotation(item, index))}
-        <p className="absolute bottom-1 left-1 text-white text-xs bg-black/50 px-2 py-0.5 rounded">
-          タップ: 編集 / ドラッグ: 移動・サイズ・回転
-        </p>
+        <div ref={containerRef} className="relative inline-block max-w-full max-h-full">
+          <img src={photo} alt="注釈対象" className="max-w-full max-h-[70vh] block" draggable={false} />
+          {items.map((item, index) => renderAnnotation(item, index))}
+        </div>
       </div>
 
       {/* 下部ボタン */}

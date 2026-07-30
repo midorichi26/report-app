@@ -258,11 +258,13 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
           onTouchStart={(e) => handleMoveStart(e, index)}
         >
           {item.text}
-          <button
-            onClick={(e) => { e.stopPropagation(); removeAnnotation(index) }}
-            className="absolute -top-2 -left-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
-            style={{ fontSize: '14px', touchAction: 'none' }}
-          >×</button>
+          {isEditing && (
+            <button
+              onClick={(e) => { e.stopPropagation(); removeAnnotation(index) }}
+              className="absolute -top-2 -left-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+              style={{ fontSize: '14px', touchAction: 'none' }}
+            >×</button>
+          )}
         </div>
       )
     }
@@ -292,17 +294,21 @@ function PhotoAnnotator({ photo, annotations = [], onChange, onClose }) {
             {renderShape(item)}
           </svg>
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); removeAnnotation(index) }}
-          className="absolute -top-2 -left-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold"
-          style={{ touchAction: 'none', fontSize: '16px' }}
-        >×</button>
-        <div
-          className="absolute -top-2 -right-2 w-7 h-7 bg-white border-2 border-green-500 rounded-full cursor-crosshair flex items-center justify-center"
-          onMouseDown={(e) => handleRotateStart(e, index)}
-          onTouchStart={(e) => handleRotateStart(e, index)}
-          style={{ touchAction: 'none', fontSize: '14px' }}
-        >↻</div>
+        {isEditing && (
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); removeAnnotation(index) }}
+              className="absolute -top-2 -left-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold"
+              style={{ touchAction: 'none', fontSize: '16px' }}
+            >×</button>
+            <div
+              className="absolute -top-2 -right-2 w-7 h-7 bg-white border-2 border-green-500 rounded-full cursor-crosshair flex items-center justify-center"
+              onMouseDown={(e) => handleRotateStart(e, index)}
+              onTouchStart={(e) => handleRotateStart(e, index)}
+              style={{ touchAction: 'none', fontSize: '14px' }}
+            >↻</div>
+          </>
+        )}
       </div>
     )
   }

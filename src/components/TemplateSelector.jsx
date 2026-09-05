@@ -5,8 +5,6 @@ const templates = [
   { count: 2, label: '写真2枚', description: '2枚の写真を横並びで配置', icon: '🖼️🖼️' },
   { count: 3, label: '写真3枚', description: '上1枚＋下2枚のレイアウト', icon: '📸' },
   { count: 4, label: '写真4枚', description: '2×2のグリッドで配置', icon: '📷' },
-  { count: 5, label: '写真5枚', description: '上2枚＋下3枚のレイアウト', icon: '📱' },
-  { count: 6, label: '写真6枚', description: '2×3のグリッドで配置', icon: '🗂️' },
 ]
 
 function TemplateSelector({ onSelect }) {
@@ -71,33 +69,6 @@ function PhotoLayoutPreview({ count }) {
         <div className={`${boxClass} h-8`}>2</div>
         <div className={`${boxClass} h-8`}>3</div>
         <div className={`${boxClass} h-8`}>4</div>
-      </div>
-    )
-  }
-  if (count === 5) {
-    return (
-      <div className="space-y-1">
-        <div className="grid grid-cols-2 gap-1">
-          <div className={`${boxClass} h-8`}>1</div>
-          <div className={`${boxClass} h-8`}>2</div>
-        </div>
-        <div className="grid grid-cols-3 gap-1">
-          <div className={`${boxClass} h-7`}>3</div>
-          <div className={`${boxClass} h-7`}>4</div>
-          <div className={`${boxClass} h-7`}>5</div>
-        </div>
-      </div>
-    )
-  }
-  if (count === 6) {
-    return (
-      <div className="grid grid-cols-3 gap-1">
-        <div className={`${boxClass} h-7`}>1</div>
-        <div className={`${boxClass} h-7`}>2</div>
-        <div className={`${boxClass} h-7`}>3</div>
-        <div className={`${boxClass} h-7`}>4</div>
-        <div className={`${boxClass} h-7`}>5</div>
-        <div className={`${boxClass} h-7`}>6</div>
       </div>
     )
   }

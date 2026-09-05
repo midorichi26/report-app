@@ -28,6 +28,8 @@ function ReportEditor({ report, onSave, onSaveOnly, onBack, registerGetData }) {
   })
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+  // 保存処理中フラグ（二重押し防止・ボタン表示用）
+  const [isSaving, setIsSaving] = useState(false)
   // 保存結果のフィードバック表示用 { type: 'success' | 'error', message: string }
   const [feedback, setFeedback] = useState(null)
   const reportRef = useRef(null)
@@ -79,21 +81,27 @@ function ReportEditor({ report, onSave, onSaveOnly, onBack, registerGetData }) {
     setFormData(prev => ({ ...prev, photoAnnotations: newAnnotations }))
   }
 
-  const handleSave = () => {
-    // 保存だけ行い、画面遷移はしない（成否を受け取る）
-    // onSaveOnlyがあればそれを使い、なければ従来のonSaveにフォールバック
-    const saveFn = onSaveOnly || onSave
-    const result = saveFn ? saveFn(formData) : { success: true }
-    if (result && result.success === false) {
-      // 保存失敗時はエディタに留まり、エラーを表示する
-      showFeedback('error', result.error || '保存に失敗しました。')
-      return
+  const handleSave = async () => {
+    if (isSaving) return // 二重押し防止
+    setIsSaving(true)
+    try {
+      // 保存だけ行い、画面遷移はしない（成否を受け取る）
+      // onSaveOnlyがあればそれを使い、なければ従来のonSaveにフォールバック
+      const saveFn = onSaveOnly || onSave
+      const result = saveFn ? await saveFn(formData) : { success: true }
+      if (result && result.success === false) {
+        // 保存失敗時はエディタに留まり、エラーを表示する
+        showFeedback('error', result.error || '保存に失敗しました。')
+        return
+      }
+      // 保存成功。メッセージを表示してから少し待ってリストに戻る
+      showFeedback('success', '保存しました')
+      setTimeout(() => {
+        if (onBack) onBack(formData)
+      }, 1200)
+    } finally {
+      setIsSaving(false)
     }
-    // 保存成功。メッセージを表示してから少し待ってリストに戻る
-    showFeedback('success', '保存しました')
-    setTimeout(() => {
-      if (onBack) onBack(formData)
-    }, 1200)
   }
 
   // 「戻る」時の自動保存（A案：何か入力があれば保存）はApp側で判定するため、
@@ -313,8 +321,8 @@ function ReportEditor({ report, onSave, onSaveOnly, onBack, registerGetData }) {
 
       {/* アクションボタン */}
       <div className="flex flex-wrap gap-3 justify-center pb-6">
-        <button onClick={handleSave} className="btn-primary">
-          💾 保存
+        <button onClick={handleSave} disabled={isSaving} className="btn-primary">
+          {isSaving ? '⏳ 保存中...' : '💾 保存'}
         </button>
         <button onClick={handleGeneratePDF} disabled={isGeneratingPdf} className="btn-success">
           {isGeneratingPdf ? '⏳ 生成中...' : '📄 PDF保存'}

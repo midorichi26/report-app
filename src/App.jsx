@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import ReportList from './components/ReportList.jsx'
 import ReportEditor from './components/ReportEditor.jsx'
 import TemplateSelector from './components/TemplateSelector.jsx'
+import { getAllReports, saveReport, deleteReport } from './utils/reportStore.js'
 
 // 季節テーマ設定
 function getSeasonTheme() {
@@ -62,20 +63,29 @@ function App() {
   // ReportEditorが保持する最新の編集内容を取得するための関数を格納するref
   const editorGetDataRef = useRef(null)
 
-  // LocalStorageから報告書を読み込み
+  // IndexedDBから報告書を読み込み（初回にLocalStorageからの移行も行われる）
   useEffect(() => {
-    const saved = localStorage.getItem('reports')
-    if (saved) {
-      setReports(JSON.parse(saved))
+    let mounted = true
+    getAllReports()
+      .then((list) => {
+        if (mounted) setReports(list)
+      })
+      .catch((e) => {
+        console.error('報告書の読み込みに失敗しました:', e)
+      })
+    return () => {
+      mounted = false
     }
   }, [])
 
-  // 報告書をLocalStorageに保存（失敗時は例外を投げる）
-  const saveReports = (updatedReports) => {
-    // 先にLocalStorageへの書き込みを試す。容量オーバー等はここで例外になる
-    localStorage.setItem('reports', JSON.stringify(updatedReports))
-    // 書き込みに成功したら画面の状態を更新する
-    setReports(updatedReports)
+  // IndexedDBから最新の一覧を読み直して画面に反映する
+  const reloadReports = async () => {
+    try {
+      const list = await getAllReports()
+      setReports(list)
+    } catch (e) {
+      console.error('報告書の再読み込みに失敗しました:', e)
+    }
   }
 
   // 新規作成 - テンプレート選択へ
@@ -108,34 +118,29 @@ function App() {
   }
 
   // 報告書を保存（成否を返す。画面遷移はしない）
-  // 戻り値: { success: true } または { success: false, error: '...' }
-  const handleSaveReport = (report) => {
+  // 戻り値(Promise): { success: true } または { success: false, error: '...' }
+  const handleSaveReport = async (report) => {
     const updated = { ...report, updatedAt: new Date().toISOString() }
-    const existingIndex = reports.findIndex(r => r.id === updated.id)
-    let updatedReports
-    if (existingIndex >= 0) {
-      updatedReports = [...reports]
-      updatedReports[existingIndex] = updated
-    } else {
-      updatedReports = [...reports, updated]
-    }
     try {
-      saveReports(updatedReports)
+      await saveReport(updated)
+      // 保存後、一覧を最新化する
+      await reloadReports()
       return { success: true }
     } catch (e) {
-      // LocalStorageの容量オーバー（QuotaExceededError）などを検知
+      // IndexedDBの容量オーバー（QuotaExceededError）などを検知
       const isQuota =
         e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')
       const message = isQuota
-        ? '保存容量がいっぱいです。不要な報告書を削除するか、写真の枚数・サイズを減らしてから、もう一度お試しください。'
+        ? '保存容量がいっぱいです。不要な報告書を削除してから、もう一度お試しください。'
         : '保存に失敗しました。時間をおいてもう一度お試しください。'
+      console.error('報告書の保存に失敗しました:', e)
       return { success: false, error: message }
     }
   }
 
   // 「保存」ボタンから呼ばれる。保存に成功したらリストへ戻る
-  const handleSaveAndClose = (report) => {
-    const result = handleSaveReport(report)
+  const handleSaveAndClose = async (report) => {
+    const result = await handleSaveReport(report)
     if (result.success) {
       setCurrentView('list')
       setEditingReport(null)
@@ -156,9 +161,13 @@ function App() {
   }
 
   // 報告書を削除
-  const handleDeleteReport = (id) => {
-    const updatedReports = reports.filter(r => r.id !== id)
-    saveReports(updatedReports)
+  const handleDeleteReport = async (id) => {
+    try {
+      await deleteReport(id)
+      await reloadReports()
+    } catch (e) {
+      console.error('報告書の削除に失敗しました:', e)
+    }
   }
 
   // リストに戻る（保存はしない）
@@ -170,10 +179,10 @@ function App() {
 
   // 編集中の内容を受け取り、必要なら自動保存してからリストに戻る（A案）
   // editor以外の画面ではそのまま戻る
-  const handleBackFromEditor = (currentReport) => {
+  const handleBackFromEditor = async (currentReport) => {
     if (currentReport && hasContent(currentReport)) {
       // 何か入力があれば保存を試みる。失敗しても戻る操作は妨げない
-      handleSaveReport(currentReport)
+      await handleSaveReport(currentReport)
     }
     handleBack()
   }

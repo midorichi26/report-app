@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import PhotoGrid from './PhotoGrid.jsx'
 import PrintModal from './PrintModal.jsx'
 import { generatePDF, generatePDFFile } from '../utils/pdfGenerator.js'
@@ -17,7 +17,7 @@ function getSeasonTheme() {
   }
 }
 
-function ReportEditor({ report, onSave, onBack }) {
+function ReportEditor({ report, onSave, onSaveOnly, onBack, registerGetData }) {
   const [formData, setFormData] = useState({
     ...report,
     photoComments: report.photoComments || Array(report.photoCount).fill(null),
@@ -28,7 +28,34 @@ function ReportEditor({ report, onSave, onBack }) {
   })
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+  // 保存結果のフィードバック表示用 { type: 'success' | 'error', message: string }
+  const [feedback, setFeedback] = useState(null)
   const reportRef = useRef(null)
+  // 常に最新のformDataを参照するためのref（戻るボタンからの自動保存で使用）
+  const formDataRef = useRef(formData)
+
+  // formDataが変わるたびにrefを最新化
+  useEffect(() => {
+    formDataRef.current = formData
+  }, [formData])
+
+  // 親（App）が最新の編集内容を取得できるように、取得関数を登録する
+  useEffect(() => {
+    if (registerGetData) {
+      registerGetData(() => formDataRef.current)
+    }
+    return () => {
+      if (registerGetData) registerGetData(null)
+    }
+  }, [registerGetData])
+
+  // フィードバックを表示し、成功時は数秒後に自動で消す
+  const showFeedback = (type, message) => {
+    setFeedback({ type, message })
+    if (type === 'success') {
+      setTimeout(() => setFeedback(null), 2500)
+    }
+  }
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -53,7 +80,19 @@ function ReportEditor({ report, onSave, onBack }) {
   }
 
   const handleSave = () => {
-    onSave(formData)
+    // onSaveは保存を試み、{ success, error } を返す
+    const result = onSave ? onSave(formData) : { success: true }
+    if (result && result.success === false) {
+      // 保存失敗時はエディタに留まり、エラーを表示する
+      showFeedback('error', result.error || '保存に失敗しました。')
+    }
+    // 成功時はAppがリスト画面へ遷移する
+  }
+
+  // 「戻る」時の自動保存（A案：何か入力があれば保存）はApp側で判定するため、
+  // ここでは最新のformDataを渡すだけ
+  const handleBack = () => {
+    if (onBack) onBack(formData)
   }
 
   const handleGeneratePDF = async () => {
@@ -94,6 +133,33 @@ function ReportEditor({ report, onSave, onBack }) {
 
   return (
     <div className="space-y-6">
+      {/* 保存結果のフィードバック（画面上部に固定表示） */}
+      {feedback && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md">
+          <div
+            className={`rounded-lg shadow-lg px-4 py-3 flex items-start gap-2 text-sm font-medium ${
+              feedback.type === 'success'
+                ? 'bg-green-600 text-white'
+                : 'bg-red-600 text-white'
+            }`}
+          >
+            <span className="text-lg leading-none">
+              {feedback.type === 'success' ? '✅' : '⚠️'}
+            </span>
+            <span className="flex-1">{feedback.message}</span>
+            {feedback.type === 'error' && (
+              <button
+                onClick={() => setFeedback(null)}
+                className="text-white/90 hover:text-white font-bold ml-2"
+                aria-label="閉じる"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 入力フォーム */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
         <h2 className="text-xl font-bold text-gray-800 mb-4">報告書の編集</h2>
@@ -252,7 +318,7 @@ function ReportEditor({ report, onSave, onBack }) {
         <button onClick={handlePrint} className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors font-medium">
           🖨️ コンビニプリント
         </button>
-        <button onClick={onBack} className="btn-secondary">
+        <button onClick={handleBack} className="btn-secondary">
           ← 戻る
         </button>
       </div>

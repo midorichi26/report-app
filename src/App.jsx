@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import ReportList from './components/ReportList.jsx'
 import ReportEditor from './components/ReportEditor.jsx'
 import TemplateSelector from './components/TemplateSelector.jsx'
@@ -59,6 +59,8 @@ function App() {
   const [editingReport, setEditingReport] = useState(null)
   const [selectedTemplate, setSelectedTemplate] = useState(null)
   const theme = getSeasonTheme()
+  // ReportEditorが保持する最新の編集内容を取得するための関数を格納するref
+  const editorGetDataRef = useRef(null)
 
   // LocalStorageから報告書を読み込み
   useEffect(() => {
@@ -68,10 +70,12 @@ function App() {
     }
   }, [])
 
-  // 報告書を保存
+  // 報告書をLocalStorageに保存（失敗時は例外を投げる）
   const saveReports = (updatedReports) => {
-    setReports(updatedReports)
+    // 先にLocalStorageへの書き込みを試す。容量オーバー等はここで例外になる
     localStorage.setItem('reports', JSON.stringify(updatedReports))
+    // 書き込みに成功したら画面の状態を更新する
+    setReports(updatedReports)
   }
 
   // 新規作成 - テンプレート選択へ
@@ -103,7 +107,8 @@ function App() {
     setCurrentView('editor')
   }
 
-  // 報告書を保存
+  // 報告書を保存（成否を返す。画面遷移はしない）
+  // 戻り値: { success: true } または { success: false, error: '...' }
   const handleSaveReport = (report) => {
     const updated = { ...report, updatedAt: new Date().toISOString() }
     const existingIndex = reports.findIndex(r => r.id === updated.id)
@@ -114,9 +119,40 @@ function App() {
     } else {
       updatedReports = [...reports, updated]
     }
-    saveReports(updatedReports)
-    setCurrentView('list')
-    setEditingReport(null)
+    try {
+      saveReports(updatedReports)
+      return { success: true }
+    } catch (e) {
+      // LocalStorageの容量オーバー（QuotaExceededError）などを検知
+      const isQuota =
+        e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')
+      const message = isQuota
+        ? '保存容量がいっぱいです。不要な報告書を削除するか、写真の枚数・サイズを減らしてから、もう一度お試しください。'
+        : '保存に失敗しました。時間をおいてもう一度お試しください。'
+      return { success: false, error: message }
+    }
+  }
+
+  // 「保存」ボタンから呼ばれる。保存に成功したらリストへ戻る
+  const handleSaveAndClose = (report) => {
+    const result = handleSaveReport(report)
+    if (result.success) {
+      setCurrentView('list')
+      setEditingReport(null)
+    }
+    return result
+  }
+
+  // 報告書に何か入力があるか判定（A案：空なら自動保存しない）
+  const hasContent = (report) => {
+    if (!report) return false
+    const hasText =
+      (report.title && report.title.trim() !== '') ||
+      (report.body && report.body.trim() !== '') ||
+      (report.author && report.author.trim() !== '')
+    const hasPhoto =
+      Array.isArray(report.photos) && report.photos.some(p => p !== null && p !== undefined)
+    return Boolean(hasText || hasPhoto)
   }
 
   // 報告書を削除
@@ -125,11 +161,32 @@ function App() {
     saveReports(updatedReports)
   }
 
-  // リストに戻る
+  // リストに戻る（保存はしない）
   const handleBack = () => {
     setCurrentView('list')
     setEditingReport(null)
     setSelectedTemplate(null)
+  }
+
+  // 編集中の内容を受け取り、必要なら自動保存してからリストに戻る（A案）
+  // editor以外の画面ではそのまま戻る
+  const handleBackFromEditor = (currentReport) => {
+    if (currentReport && hasContent(currentReport)) {
+      // 何か入力があれば保存を試みる。失敗しても戻る操作は妨げない
+      handleSaveReport(currentReport)
+    }
+    handleBack()
+  }
+
+  // ヘッダーの「戻る」用。エディタ表示中は最新の編集内容で自動保存する
+  const handleHeaderBack = () => {
+    if (currentView === 'editor') {
+      // 最新のformDataはReportEditorが保持しているためref経由で取得
+      const latest = editorGetDataRef.current ? editorGetDataRef.current() : editingReport
+      handleBackFromEditor(latest)
+    } else {
+      handleBack()
+    }
   }
 
   return (
@@ -139,7 +196,7 @@ function App() {
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1
             className="text-xl font-bold cursor-pointer flex items-center gap-2"
-            onClick={handleBack}
+            onClick={handleHeaderBack}
           >
             <span>{theme.emoji}</span>
             <span>📋 報告書作成ツール</span>
@@ -150,7 +207,7 @@ function App() {
             </button>
           )}
           {currentView !== 'list' && (
-            <button onClick={handleBack} className="bg-white/20 text-white px-4 py-2 rounded-lg font-medium hover:bg-white/30 transition-colors">
+            <button onClick={handleHeaderBack} className="bg-white/20 text-white px-4 py-2 rounded-lg font-medium hover:bg-white/30 transition-colors">
               ← 戻る
             </button>
           )}
@@ -179,8 +236,10 @@ function App() {
         {currentView === 'editor' && editingReport && (
           <ReportEditor
             report={editingReport}
-            onSave={handleSaveReport}
-            onBack={handleBack}
+            onSave={handleSaveAndClose}
+            onSaveOnly={handleSaveReport}
+            onBack={handleBackFromEditor}
+            registerGetData={(fn) => { editorGetDataRef.current = fn }}
           />
         )}
       </main>

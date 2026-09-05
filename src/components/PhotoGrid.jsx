@@ -23,8 +23,6 @@ function PhotoGrid({ photos, photoCount, onPhotoChange, photoComments, onPhotoCo
 }
 
 function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, annotations, onAnnotationsChange, dateStamp, onDateStampChange }) {
-  const cameraInputRef = useRef(null)
-  const galleryInputRef = useRef(null)
   const [showMenu, setShowMenu] = React.useState(false)
   const [showAnnotator, setShowAnnotator] = React.useState(false)
   const [isDraggingStamp, setIsDraggingStamp] = React.useState(false)
@@ -33,8 +31,13 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
   const slotRef = useRef(null)
 
   const handleFileSelect = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
+    const file = e.target.files?.[0]
+    // inputのvalueをリセット（同じファイルを再選択可能にする）
+    e.target.value = ''
+    if (!file) {
+      setShowMenu(false)
+      return
+    }
 
     const reader = new FileReader()
     reader.onload = (event) => {
@@ -65,6 +68,11 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
     setShowMenu(false)
   }
 
+  // ファイル選択ダイアログでキャンセルされた時にメニューを閉じる
+  const handleFileCancel = () => {
+    setShowMenu(false)
+  }
+
   const handleRemove = (e) => {
     e.stopPropagation()
     onPhotoChange(index, null)
@@ -74,18 +82,6 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
     if (!photo) {
       setShowMenu(true)
     }
-  }
-
-  const handleCamera = (e) => {
-    e.stopPropagation()
-    setShowMenu(false)
-    cameraInputRef.current?.click()
-  }
-
-  const handleGallery = (e) => {
-    e.stopPropagation()
-    setShowMenu(false)
-    galleryInputRef.current?.click()
   }
 
   // コメント欄の表示: nullなら非表示、文字列なら表示
@@ -317,51 +313,59 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
           </div>
         )}
 
-        {/* 選択メニュー */}
-        {showMenu && (
-          <div
-            className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3 z-10"
-            onClick={(e) => { e.stopPropagation(); setShowMenu(false) }}
-          >
-            <button
-              onClick={handleCamera}
-              className="bg-white text-gray-800 font-medium px-5 py-2.5 rounded-lg shadow-lg text-sm hover:bg-gray-100 transition-colors w-40"
-            >
-              📷 カメラで撮影
-            </button>
-            <button
-              onClick={handleGallery}
-              className="bg-white text-gray-800 font-medium px-5 py-2.5 rounded-lg shadow-lg text-sm hover:bg-gray-100 transition-colors w-40"
-            >
-              🖼️ ギャラリーから選択
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); setShowMenu(false) }}
-              className="text-white text-sm mt-1 underline"
-            >
-              キャンセル
-            </button>
-          </div>
-        )}
-
-        {/* カメラ用input */}
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
-        {/* ギャラリー用input（captureなし） */}
-        <input
-          ref={galleryInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
+        {/* 選択メニューはスロットの外に配置（overflow:hidden問題を回避） */}
       </div>
+
+      {/* 選択メニュー - fixed位置で表示 */}
+      {showMenu && (
+        <div
+          className="fixed inset-0 bg-black/60 flex flex-col items-center justify-center gap-4"
+          style={{ zIndex: 9999 }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowMenu(false)
+            }
+          }}
+          onTouchEnd={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowMenu(false)
+            }
+          }}
+        >
+          <p className="text-white text-sm mb-2">写真{index + 1}を追加</p>
+          <label
+            className="relative bg-white text-gray-800 font-medium px-5 py-3 rounded-lg shadow-lg text-sm w-48 text-center cursor-pointer block"
+          >
+            📷 カメラで撮影
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileSelect}
+              onCancel={handleFileCancel}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+          </label>
+          <label
+            className="relative bg-white text-gray-800 font-medium px-5 py-3 rounded-lg shadow-lg text-sm w-48 text-center cursor-pointer block"
+          >
+            🖼️ ギャラリーから選択
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              onCancel={handleFileCancel}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+          </label>
+          <button
+            onClick={() => setShowMenu(false)}
+            className="text-white text-sm mt-2 underline px-6 py-2"
+          >
+            キャンセル
+          </button>
+        </div>
+      )}
 
       {/* 注釈エディタ */}
       {showAnnotator && (

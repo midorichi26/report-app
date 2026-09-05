@@ -80,13 +80,20 @@ function ReportEditor({ report, onSave, onSaveOnly, onBack, registerGetData }) {
   }
 
   const handleSave = () => {
-    // onSaveは保存を試み、{ success, error } を返す
-    const result = onSave ? onSave(formData) : { success: true }
+    // 保存だけ行い、画面遷移はしない（成否を受け取る）
+    // onSaveOnlyがあればそれを使い、なければ従来のonSaveにフォールバック
+    const saveFn = onSaveOnly || onSave
+    const result = saveFn ? saveFn(formData) : { success: true }
     if (result && result.success === false) {
       // 保存失敗時はエディタに留まり、エラーを表示する
       showFeedback('error', result.error || '保存に失敗しました。')
+      return
     }
-    // 成功時はAppがリスト画面へ遷移する
+    // 保存成功。メッセージを表示してから少し待ってリストに戻る
+    showFeedback('success', '保存しました')
+    setTimeout(() => {
+      if (onBack) onBack(formData)
+    }, 1200)
   }
 
   // 「戻る」時の自動保存（A案：何か入力があれば保存）はApp側で判定するため、

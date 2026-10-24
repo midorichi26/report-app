@@ -738,25 +738,45 @@ function drawSeasonDecoration(pdf, pageWidth, pageHeight) {
   const month = new Date().getMonth() + 1
   let decorations, color
 
+  // 左右それぞれ3つ（計6つ）表示するため、各季節で6要素用意する。
+  // 要素が足りないと右側ループで undefined を描画してしまい、文字化け（□/undefined）の原因になる。
   if (month >= 3 && month <= 5) {
-    decorations = ['🌸', '🌷', '🦋']
+    decorations = ['🌸', '🌷', '🦋', '🌸', '🌷', '🦋']
     color = [244, 114, 182] // pink
   } else if (month >= 6 && month <= 8) {
     decorations = ['🍉', '🌊', '🐚', '☀️', '🌻', '🌺']
     color = [6, 182, 212] // cyan
   } else if (month >= 9 && month <= 11) {
-    decorations = ['🍁', '🍂', '🌾']
+    decorations = ['🍁', '🍂', '🌾', '🍁', '🍂', '🌾']
     color = [249, 115, 22] // orange
   } else {
-    decorations = ['❄️', '⛄', '✨']
+    decorations = ['❄️', '⛄', '✨', '❄️', '⛄', '✨']
     color = [79, 70, 229] // indigo
   }
 
-  // Canvasで絵文字を描画して画像としてPDFに配置
+  // カラー絵文字フォントを明示指定する。
+  // 'serif' 等のテキストフォントだと絵文字グリフを持たず □（豆腐）になる環境があるため、
+  // OS標準のカラー絵文字フォントを先頭に並べてフォールバックさせる。
+  const emojiFont =
+    '"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", "Twemoji Mozilla", sans-serif'
+
+  // Canvasで絵文字を描画して画像としてPDFに配置（高解像度で作成してにじみを軽減）
+  const canvasPx = 120
   const canvas = document.createElement('canvas')
-  canvas.width = 60
-  canvas.height = 60
+  canvas.width = canvasPx
+  canvas.height = canvasPx
   const ctx = canvas.getContext('2d')
+
+  // 1つの絵文字をCanvasに描いて PNG dataURL を返すヘルパー
+  const renderEmoji = (emoji) => {
+    ctx.clearRect(0, 0, canvasPx, canvasPx)
+    ctx.font = `${Math.round(canvasPx * 0.7)}px ${emojiFont}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = '#000000'
+    ctx.fillText(emoji, canvasPx / 2, canvasPx / 2)
+    return canvas.toDataURL('image/png')
+  }
 
   // タイトルの両サイドにデコレーションを配置（左3つ、右3つ）
   const titleY = 10 // タイトルのおおよそのY位置(mm)
@@ -764,26 +784,22 @@ function drawSeasonDecoration(pdf, pageWidth, pageHeight) {
   const gap = 1
 
   // 左側3つ
+  // 注意: addImage の alias 引数には絵文字や日本語などマルチバイト文字を渡さないこと。
+  // jsPDF の内部処理が壊れ、alias 文字列の一部が PDF 上にテキストとして出力されてしまう
+  // （iOS Safari で "left..." のような謎のアルファベットが表示される不具合の原因）。
+  // alias は省略し、jsPDF の自動キャッシュに任せる。
   for (let i = 0; i < 3; i++) {
     const emoji = decorations[i]
-    ctx.clearRect(0, 0, 60, 60)
-    ctx.font = '40px serif'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(emoji, 30, 30)
-    const imgData = canvas.toDataURL('image/png')
+    if (!emoji) continue
+    const imgData = renderEmoji(emoji)
     pdf.addImage(imgData, 'PNG', 3 + i * (emojiSize + gap), titleY, emojiSize, emojiSize)
   }
 
   // 右側3つ
   for (let i = 0; i < 3; i++) {
     const emoji = decorations[3 + i]
-    ctx.clearRect(0, 0, 60, 60)
-    ctx.font = '40px serif'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(emoji, 30, 30)
-    const imgData = canvas.toDataURL('image/png')
+    if (!emoji) continue
+    const imgData = renderEmoji(emoji)
     pdf.addImage(imgData, 'PNG', pageWidth - 3 - (3 - i) * (emojiSize + gap), titleY, emojiSize, emojiSize)
   }
 }

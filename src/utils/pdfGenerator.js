@@ -35,7 +35,7 @@ export async function generatePDF(report) {
     const pageCount0 = pdf.getNumberOfPages()
     for (let i = 1; i <= pageCount0; i++) {
       pdf.setPage(i)
-      drawSeasonDecoration(pdf, pageWidth, pageHeight)
+      drawSeasonDecoration(pdf, pageWidth, pageHeight, report.season)
     }
   }
 
@@ -85,7 +85,7 @@ export async function generatePDFFile(report) {
     const pageCount0 = pdf.getNumberOfPages()
     for (let i = 1; i <= pageCount0; i++) {
       pdf.setPage(i)
-      drawSeasonDecoration(pdf, pageWidth, pageHeight)
+      drawSeasonDecoration(pdf, pageWidth, pageHeight, report.season)
     }
   }
 
@@ -732,21 +732,37 @@ function drawDateStamp(pdf, dateStamp, photoX, photoY, photoW, photoH, pxPerMm, 
 
 
 /**
+ * 季節キーを決定する。
+ * season が 'spring'|'summer'|'autumn'|'winter' ならそれを採用。
+ * 'auto' や未指定・不正値のときは現在の月から自動判定する。
+ */
+function resolveSeasonKey(season) {
+  const valid = ['spring', 'summer', 'autumn', 'winter']
+  if (valid.includes(season)) return season
+  const month = new Date().getMonth() + 1
+  if (month >= 3 && month <= 5) return 'spring'
+  if (month >= 6 && month <= 8) return 'summer'
+  if (month >= 9 && month <= 11) return 'autumn'
+  return 'winter'
+}
+
+/**
  * 季節デコレーションをPDFページに描画
  */
-function drawSeasonDecoration(pdf, pageWidth, pageHeight) {
-  const month = new Date().getMonth() + 1
+function drawSeasonDecoration(pdf, pageWidth, pageHeight, season) {
+  // season が 'spring'|'summer'|'autumn'|'winter' なら手動指定、それ以外（'auto'/未指定）は月から自動判定
+  const key = resolveSeasonKey(season)
   let decorations, color
 
   // 左右それぞれ3つ（計6つ）表示するため、各季節で6要素用意する。
   // 要素が足りないと右側ループで undefined を描画してしまい、文字化け（□/undefined）の原因になる。
-  if (month >= 3 && month <= 5) {
+  if (key === 'spring') {
     decorations = ['🌸', '🌷', '🦋', '🌸', '🌷', '🦋']
     color = [244, 114, 182] // pink
-  } else if (month >= 6 && month <= 8) {
+  } else if (key === 'summer') {
     decorations = ['🍉', '🌊', '🐚', '☀️', '🌻', '🌺']
     color = [6, 182, 212] // cyan
-  } else if (month >= 9 && month <= 11) {
+  } else if (key === 'autumn') {
     decorations = ['🍁', '🍂', '🌾', '🍁', '🍂', '🌾']
     color = [249, 115, 22] // orange
   } else {

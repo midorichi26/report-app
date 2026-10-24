@@ -3,21 +3,39 @@ import PhotoGrid from './PhotoGrid.jsx'
 import PrintModal from './PrintModal.jsx'
 import { generatePDF, generatePDFFile } from '../utils/pdfGenerator.js'
 
-// 季節テーマ取得（App.jsxと同じロジック）
-function getSeasonTheme() {
+// 月から季節キーを自動判定する
+function getAutoSeasonKey() {
   const month = new Date().getMonth() + 1
-  if (month >= 3 && month <= 5) {
-    return { name: '春', emoji: '🌸', decorations: ['🌸', '🌷', '🐝', '🦋'], color: '#F472B6' }
-  } else if (month >= 6 && month <= 8) {
-    return { name: '夏', emoji: '🏖️', decorations: ['🍉', '🌊', '🐚', '☀️', '🌺'], color: '#06B6D4' }
-  } else if (month >= 9 && month <= 11) {
-    return { name: '秋', emoji: '🍁', decorations: ['🍁', '🍂', '🌾', '🎑'], color: '#F97316' }
-  } else {
-    return { name: '冬', emoji: '⛄', decorations: ['❄️', '⛄', '🎄', '✨'], color: '#4F46E5' }
-  }
+  if (month >= 3 && month <= 5) return 'spring'
+  if (month >= 6 && month <= 8) return 'summer'
+  if (month >= 9 && month <= 11) return 'autumn'
+  return 'winter'
 }
 
-function ReportEditor({ report, onSave, onSaveOnly, onBack, registerGetData }) {
+// 季節キー（spring/summer/autumn/winter）からテーマ情報を返す
+const SEASON_THEMES = {
+  spring: { name: '春', emoji: '🌸', decorations: ['🌸', '🌷', '🐝', '🦋'], color: '#F472B6' },
+  summer: { name: '夏', emoji: '🏖️', decorations: ['🍉', '🌊', '🐚', '☀️', '🌺'], color: '#06B6D4' },
+  autumn: { name: '秋', emoji: '🍁', decorations: ['🍁', '🍂', '🌾', '🎑'], color: '#F97316' },
+  winter: { name: '冬', emoji: '⛄', decorations: ['❄️', '⛄', '🎄', '✨'], color: '#4F46E5' },
+}
+
+// season（'auto'含む）から表示用テーマを取得
+function getSeasonTheme(season) {
+  const key = season && season !== 'auto' ? season : getAutoSeasonKey()
+  return SEASON_THEMES[key] || SEASON_THEMES.winter
+}
+
+// 季節セレクタの選択肢
+const SEASON_OPTIONS = [
+  { value: 'auto', label: '自動（今の月）' },
+  { value: 'spring', label: '🌸 春' },
+  { value: 'summer', label: '🏖️ 夏' },
+  { value: 'autumn', label: '🍁 秋' },
+  { value: 'winter', label: '⛄ 冬' },
+]
+
+function ReportEditor({ report, onSave, onSaveOnly, onBack, registerGetData, onSeasonChange }) {
   const [formData, setFormData] = useState({
     ...report,
     photoComments: report.photoComments || Array(report.photoCount).fill(null),
@@ -25,6 +43,7 @@ function ReportEditor({ report, onSave, onSaveOnly, onBack, registerGetData }) {
     dateStamp: report.dateStamp || { text: '', color: '#FFFFFF', size: 14 },
     photoDateStamps: report.photoDateStamps || Array(report.photoCount).fill(null),
     seasonThemeEnabled: report.seasonThemeEnabled ?? false,
+    season: report.season || 'auto',
   })
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
@@ -223,20 +242,50 @@ function ReportEditor({ report, onSave, onSaveOnly, onBack, registerGetData }) {
           />
         </div>
 
-        {/* 季節テーマ ON/OFF */}
-        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-          <span className="text-sm font-medium text-gray-700">
-            {getSeasonTheme().emoji} 季節デザイン（{getSeasonTheme().name}）
-          </span>
-          <button
-            onClick={() => handleChange('seasonThemeEnabled', !formData.seasonThemeEnabled)}
-            className={`relative w-12 h-6 rounded-full transition-colors ${formData.seasonThemeEnabled ? 'bg-blue-600' : 'bg-gray-300'}`}
-          >
-            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${formData.seasonThemeEnabled ? 'translate-x-6' : ''}`} />
-          </button>
-          <span className="text-xs text-gray-500">
-            {formData.seasonThemeEnabled ? 'PDFに反映する' : 'PDFに反映しない'}
-          </span>
+        {/* 季節テーマ ON/OFF と季節選択 */}
+        <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-gray-700">
+              {getSeasonTheme(formData.season).emoji} 季節デザイン（{getSeasonTheme(formData.season).name}）
+            </span>
+            <button
+              onClick={() => handleChange('seasonThemeEnabled', !formData.seasonThemeEnabled)}
+              className={`relative w-12 h-6 rounded-full transition-colors ${formData.seasonThemeEnabled ? 'bg-blue-600' : 'bg-gray-300'}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${formData.seasonThemeEnabled ? 'translate-x-6' : ''}`} />
+            </button>
+            <span className="text-xs text-gray-500">
+              {formData.seasonThemeEnabled ? 'PDFに反映する' : 'PDFに反映しない'}
+            </span>
+          </div>
+
+          {/* 季節の手動選択（デザインON時のみ操作可能） */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">季節:</span>
+            <div className="flex flex-wrap gap-1">
+              {SEASON_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={!formData.seasonThemeEnabled}
+                  onClick={() => {
+                    handleChange('season', opt.value)
+                    if (onSeasonChange) onSeasonChange(opt.value)
+                  }}
+                  className={`px-2.5 py-1 rounded text-sm border transition-colors ${
+                    formData.season === opt.value
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                  } ${!formData.seasonThemeEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="text-xs text-gray-500">
+            ※「自動」は今の月に合わせて季節が切り替わります。春夏秋冬を選ぶとPDFにその季節の飾りが入ります。
+          </p>
         </div>
       </div>
 

@@ -4,54 +4,59 @@ import ReportEditor from './components/ReportEditor.jsx'
 import TemplateSelector from './components/TemplateSelector.jsx'
 import { getAllReports, saveReport, deleteReport } from './utils/reportStore.js'
 
-// 季節テーマ設定
-function getSeasonTheme() {
+// 月から季節キー（spring/summer/autumn/winter）を自動判定
+function getAutoSeasonKey() {
   const month = new Date().getMonth() + 1 // 1-12
-  if (month >= 3 && month <= 5) {
-    // 春 (3-5月)
-    return {
-      name: '春',
-      headerBg: 'bg-pink-400',
-      headerHover: 'hover:bg-pink-50',
-      headerTextBtn: 'text-pink-500',
-      bodyBg: 'bg-pink-50',
-      emoji: '🌸',
-      decorations: ['🌸', '🌷', '🐝', '🦋'],
-    }
-  } else if (month >= 6 && month <= 8) {
-    // 夏 (6-8月)
-    return {
-      name: '夏',
-      headerBg: 'bg-cyan-500',
-      headerHover: 'hover:bg-cyan-50',
-      headerTextBtn: 'text-cyan-600',
-      bodyBg: 'bg-cyan-50',
-      emoji: '🏖️',
-      decorations: ['🍉', '🌊', '🐚', '☀️', '🌻', '🌺'],
-    }
-  } else if (month >= 9 && month <= 11) {
-    // 秋 (9-11月)
-    return {
-      name: '秋',
-      headerBg: 'bg-orange-500',
-      headerHover: 'hover:bg-orange-50',
-      headerTextBtn: 'text-orange-600',
-      bodyBg: 'bg-orange-50',
-      emoji: '🍁',
-      decorations: ['🍁', '🍂', '🌾', '🎑'],
-    }
-  } else {
-    // 冬 (12-2月)
-    return {
-      name: '冬',
-      headerBg: 'bg-indigo-600',
-      headerHover: 'hover:bg-indigo-50',
-      headerTextBtn: 'text-indigo-600',
-      bodyBg: 'bg-blue-50',
-      emoji: '⛄',
-      decorations: ['❄️', '⛄', '🎄', '✨'],
-    }
-  }
+  if (month >= 3 && month <= 5) return 'spring'
+  if (month >= 6 && month <= 8) return 'summer'
+  if (month >= 9 && month <= 11) return 'autumn'
+  return 'winter'
+}
+
+// 季節キーごとのヘッダーテーマ定義
+const SEASON_THEMES = {
+  spring: {
+    name: '春',
+    headerBg: 'bg-pink-400',
+    headerHover: 'hover:bg-pink-50',
+    headerTextBtn: 'text-pink-500',
+    bodyBg: 'bg-pink-50',
+    emoji: '🌸',
+    decorations: ['🌸', '🌷', '🐝', '🦋'],
+  },
+  summer: {
+    name: '夏',
+    headerBg: 'bg-cyan-500',
+    headerHover: 'hover:bg-cyan-50',
+    headerTextBtn: 'text-cyan-600',
+    bodyBg: 'bg-cyan-50',
+    emoji: '🏖️',
+    decorations: ['🍉', '🌊', '🐚', '☀️', '🌻', '🌺'],
+  },
+  autumn: {
+    name: '秋',
+    headerBg: 'bg-orange-500',
+    headerHover: 'hover:bg-orange-50',
+    headerTextBtn: 'text-orange-600',
+    bodyBg: 'bg-orange-50',
+    emoji: '🍁',
+    decorations: ['🍁', '🍂', '🌾', '🎑'],
+  },
+  winter: {
+    name: '冬',
+    headerBg: 'bg-indigo-600',
+    headerHover: 'hover:bg-indigo-50',
+    headerTextBtn: 'text-indigo-600',
+    bodyBg: 'bg-blue-50',
+    emoji: '⛄',
+    decorations: ['❄️', '⛄', '🎄', '✨'],
+  },
+}
+
+// 季節テーマ設定。season が 'auto' や未指定なら月から自動判定する
+function getSeasonTheme(season) {
+  const key = season && season !== 'auto' ? season : getAutoSeasonKey()
+  return SEASON_THEMES[key] || SEASON_THEMES.winter
 }
 
 function App() {
@@ -59,7 +64,10 @@ function App() {
   const [reports, setReports] = useState([])
   const [editingReport, setEditingReport] = useState(null)
   const [selectedTemplate, setSelectedTemplate] = useState(null)
-  const theme = getSeasonTheme()
+  // 編集画面で選択中の季節（'auto'含む）。ヘッダーテーマをリアルタイムに追従させるために保持する
+  const [activeSeason, setActiveSeason] = useState('auto')
+  // editor表示中はその季節でヘッダーを表示し、それ以外は月から自動判定する
+  const theme = currentView === 'editor' ? getSeasonTheme(activeSeason) : getSeasonTheme()
   // ReportEditorが保持する最新の編集内容を取得するための関数を格納するref
   const editorGetDataRef = useRef(null)
 
@@ -107,6 +115,7 @@ function App() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
+    setActiveSeason('auto')
     setCurrentView('editor')
   }
 
@@ -114,6 +123,7 @@ function App() {
   const handleEditReport = (report) => {
     setEditingReport({ ...report })
     setSelectedTemplate(report.photoCount)
+    setActiveSeason(report.season || 'auto')
     setCurrentView('editor')
   }
 
@@ -249,6 +259,7 @@ function App() {
             onSaveOnly={handleSaveReport}
             onBack={handleBackFromEditor}
             registerGetData={(fn) => { editorGetDataRef.current = fn }}
+            onSeasonChange={setActiveSeason}
           />
         )}
       </main>

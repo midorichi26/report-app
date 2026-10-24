@@ -757,16 +757,16 @@ function drawSeasonDecoration(pdf, pageWidth, pageHeight, season) {
   // 左右それぞれ3つ（計6つ）表示するため、各季節で6要素用意する。
   // 要素が足りないと右側ループで undefined を描画してしまい、文字化け（□/undefined）の原因になる。
   if (key === 'spring') {
-    decorations = ['🌸', '🌷', '🦋', '🌸', '🌷', '🦋']
+    decorations = ['🌸', '🌷', '🌼', '🦋', '🐝', '🌱']
     color = [244, 114, 182] // pink
   } else if (key === 'summer') {
     decorations = ['🍉', '🌊', '🐚', '☀️', '🌻', '🌺']
     color = [6, 182, 212] // cyan
   } else if (key === 'autumn') {
-    decorations = ['🍁', '🍂', '🌾', '🍁', '🍂', '🌾']
+    decorations = ['🍁', '🍂', '🌰', '🍄', '🌾', '🍇']
     color = [249, 115, 22] // orange
   } else {
-    decorations = ['❄️', '⛄', '✨', '❄️', '⛄', '✨']
+    decorations = ['❄️', '⛄', '⭐', '🎄', '🧣', '✨']
     color = [79, 70, 229] // indigo
   }
 

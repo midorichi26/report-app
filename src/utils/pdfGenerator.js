@@ -414,13 +414,13 @@ function getPhotoLayout(count, availableWidth) {
       totalHeight = h
       break
     }
-    case 3: {
-      const w1 = availableWidth * 0.75
-      const h1 = w1 * 0.85
+        case 3: {
+      const w1 = availableWidth * 0.55
+      const h1 = w1 * 0.6
       positions.push({ x: (availableWidth - w1) / 2, y: 0, w: w1, h: h1 })
 
       const w2 = (availableWidth - gap) / 2
-      const h2 = w2 * 0.85
+      const h2 = w2 * 0.55
       positions.push({ x: 0, y: h1 + gap, w: w2, h: h2 })
       positions.push({ x: w2 + gap, y: h1 + gap, w: w2, h: h2 })
       totalHeight = h1 + gap + h2
@@ -428,13 +428,16 @@ function getPhotoLayout(count, availableWidth) {
     }
     case 4: {
       const w = (availableWidth - gap) / 2
-      const h = w * 0.85
+      const h = w * 0.55
       positions.push({ x: 0, y: 0, w, h })
       positions.push({ x: w + gap, y: 0, w, h })
       positions.push({ x: 0, y: h + gap, w, h })
       positions.push({ x: w + gap, y: h + gap, w, h })
       totalHeight = h * 2 + gap
       break
+    }
+
+  
     }
     case 5: {
       const w2 = (availableWidth - gap) / 2

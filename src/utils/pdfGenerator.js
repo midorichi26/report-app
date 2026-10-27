@@ -755,13 +755,14 @@ const SEASON_LINE_COLORS = {
 }
 
 // タイトル下の区切り線の色を返す。
-// 季節デザインONなら季節色、OFFなら従来の青（#4285F4）。
+// 季節デザインONなら季節
+// 色、OFFなら従来の青（#4285F4）。
 function getHeaderLineColor(report) {
   const key = resolveSeasonKey(report ? report.season : undefined)
   return SEASON_LINE_COLORS[key] || '#4285F4'
 }
 
-}
+
 
 /**
  * 季節デコレーションをPDFページに描画

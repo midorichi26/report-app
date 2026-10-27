@@ -1,7 +1,7 @@
 import React, { useRef } from 'react'
 import PhotoAnnotator from './PhotoAnnotator.jsx'
 
-function PhotoGrid({ photos, photoCount, onPhotoChange, photoComments, onPhotoCommentChange, photoAnnotations, onPhotoAnnotationsChange, photoDateStamps, onPhotoDateStampChange }) {
+function PhotoGrid({ photos, photoCount, onPhotoChange, onPhotosFill, photoComments, onPhotoCommentChange, photoAnnotations, onPhotoAnnotationsChange, photoDateStamps, onPhotoDateStampChange }) {
   return (
     <div className={getGridClass(photoCount)}>
       {photos.map((photo, index) => (
@@ -10,6 +10,7 @@ function PhotoGrid({ photos, photoCount, onPhotoChange, photoComments, onPhotoCo
           index={index}
           photo={photo}
           onPhotoChange={onPhotoChange}
+          onPhotosFill={onPhotosFill}
           comment={photoComments?.[index] ?? null}
           onCommentChange={onPhotoCommentChange}
           annotations={photoAnnotations?.[index] || []}
@@ -22,7 +23,7 @@ function PhotoGrid({ photos, photoCount, onPhotoChange, photoComments, onPhotoCo
   )
 }
 
-function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, annotations, onAnnotationsChange, dateStamp, onDateStampChange }) {
+function PhotoSlot({ index, photo, onPhotoChange, onPhotosFill, comment, onCommentChange, annotations, onAnnotationsChange, dateStamp, onDateStampChange }) {
   const [showMenu, setShowMenu] = React.useState(false)
   const [showAnnotator, setShowAnnotator] = React.useState(false)
   const [isDraggingStamp, setIsDraggingStamp] = React.useState(false)
@@ -30,42 +31,35 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
   const [editDateText, setEditDateText] = React.useState('')
   const slotRef = useRef(null)
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files?.[0]
+  const handleFileSelect = async (e) => {
+    // 複数選択に対応（カメラ撮影は通常1枚、ギャラリーは複数選択可）
+    const files = Array.from(e.target.files || [])
     // inputのvalueをリセット（同じファイルを再選択可能にする）
     e.target.value = ''
-    if (!file) {
+    if (files.length === 0) {
       setShowMenu(false)
       return
     }
 
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      const img = new Image()
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        const maxWidth = 1200
-        const maxHeight = 1200
-        let { width, height } = img
-
-        if (width > maxWidth || height > maxHeight) {
-          const ratio = Math.min(maxWidth / width, maxHeight / height)
-          width = width * ratio
-          height = height * ratio
-        }
-
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0, width, height)
-
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
-        onPhotoChange(index, dataUrl)
-      }
-      img.src = event.target.result
-    }
-    reader.readAsDataURL(file)
     setShowMenu(false)
+
+    // 選択された全ファイルを縮小してdataURLに変換する
+    const dataUrls = await Promise.all(files.map(fileToResizedDataUrl))
+    // 変換に失敗したもの（null）は除外
+    const validUrls = dataUrls.filter((u) => u)
+
+    if (validUrls.length === 0) return
+
+    if (validUrls.length === 1) {
+      // 1枚だけなら従来どおりこの欄に入れる
+      onPhotoChange(index, validUrls[0])
+    } else if (onPhotosFill) {
+      // 複数枚ならこの欄を起点に、空いている欄へ順に詰める
+      onPhotosFill(index, validUrls)
+    } else {
+      // フォールバック: onPhotosFillが無い場合はこの欄に先頭だけ入れる
+      onPhotoChange(index, validUrls[0])
+    }
   }
 
   // ファイル選択ダイアログでキャンセルされた時にメニューを閉じる
@@ -349,10 +343,11 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
           <label
             className="relative bg-white text-gray-800 font-medium px-5 py-3 rounded-lg shadow-lg text-sm w-48 text-center cursor-pointer block"
           >
-            🖼️ ギャラリーから選択
+            🖼️ ギャラリーから選択（複数可）
             <input
               type="file"
               accept="image/*"
+              multiple
               onChange={handleFileSelect}
               onCancel={handleFileCancel}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -378,6 +373,40 @@ function PhotoSlot({ index, photo, onPhotoChange, comment, onCommentChange, anno
       )}
     </div>
   )
+}
+
+// 1つの画像ファイルを読み込み、最大1200pxに縮小したJPEGのdataURLを返す。
+// 失敗した場合は null を返す（呼び出し側で除外する）。
+function fileToResizedDataUrl(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const maxWidth = 1200
+        const maxHeight = 1200
+        let { width, height } = img
+
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height)
+          width = width * ratio
+          height = height * ratio
+        }
+
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+
+        resolve(canvas.toDataURL('image/jpeg', 0.8))
+      }
+      img.onerror = () => resolve(null)
+      img.src = event.target.result
+    }
+    reader.onerror = () => resolve(null)
+    reader.readAsDataURL(file)
+  })
 }
 
 function getBox3DPointsSimple(rotateX, rotateY) {

@@ -88,6 +88,32 @@ function ReportEditor({ report, onSave, onSaveOnly, onBack, registerGetData, onS
     setFormData(prev => ({ ...prev, photos: newPhotos }))
   }
 
+  // 複数枚の写真をまとめて反映する。
+  // startIndex（選択した枠）から順に、空いている欄へ写真を詰めていく。
+  // すでに写真が入っている欄は上書きせずスキップする。
+  const handlePhotosFill = (startIndex, dataUrls) => {
+    if (!dataUrls || dataUrls.length === 0) return
+    setFormData(prev => {
+      const newPhotos = [...prev.photos]
+      let src = 0 // 取り込む写真のインデックス
+      // startIndex 以降の空き欄を順に埋める
+      for (let i = startIndex; i < newPhotos.length && src < dataUrls.length; i++) {
+        if (newPhotos[i] === null || newPhotos[i] === undefined) {
+          newPhotos[i] = dataUrls[src]
+          src++
+        }
+      }
+      // まだ余っていたら、先頭から空き欄を探して埋める
+      for (let i = 0; i < newPhotos.length && src < dataUrls.length; i++) {
+        if (newPhotos[i] === null || newPhotos[i] === undefined) {
+          newPhotos[i] = dataUrls[src]
+          src++
+        }
+      }
+      return { ...prev, photos: newPhotos }
+    })
+  }
+
   const handlePhotoCommentChange = (index, value) => {
     const newComments = [...(formData.photoComments || Array(formData.photoCount).fill(null))]
     newComments[index] = value
@@ -355,6 +381,7 @@ function ReportEditor({ report, onSave, onSaveOnly, onBack, registerGetData, onS
           photos={formData.photos}
           photoCount={formData.photoCount}
           onPhotoChange={handlePhotoChange}
+          onPhotosFill={handlePhotosFill}
           photoComments={formData.photoComments}
           onPhotoCommentChange={handlePhotoCommentChange}
           photoAnnotations={formData.photoAnnotations}

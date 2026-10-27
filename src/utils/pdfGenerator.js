@@ -133,8 +133,8 @@ function drawHeader(pdf, report, margin, currentY, contentWidth, canvasWidthPx, 
   ctx.fillText(report.title || '報告書', headerCanvas.width / 2, y)
   y += 20 * dpi
 
-  // 区切り線
-  ctx.strokeStyle = '#4285F4'
+  // 区切り線（季節デザインONなら季節色、OFFなら青）
+  ctx.strokeStyle = getHeaderLineColor(report)
   ctx.lineWidth = 3 * dpi
   ctx.beginPath()
   ctx.moveTo(0, y)
@@ -744,6 +744,23 @@ function resolveSeasonKey(season) {
   if (month >= 6 && month <= 8) return 'summer'
   if (month >= 9 && month <= 11) return 'autumn'
   return 'winter'
+}
+
+// 季節キーごとのアクセントカラー（タイトル下の区切り線などに使用）
+const SEASON_LINE_COLORS = {
+  spring: '#F472B6', // ピンク
+  summer: '#06B6D4', // シアン
+  autumn: '#F97316', // オレンジ
+  winter: '#4F46E5', // インディゴ
+}
+
+// タイトル下の区切り線の色を返す。
+// 季節デザインONなら季節色、OFFなら従来の青（#4285F4）。
+function getHeaderLineColor(report) {
+  const key = resolveSeasonKey(report ? report.season : undefined)
+  return SEASON_LINE_COLORS[key] || '#4285F4'
+}
+
 }
 
 /**

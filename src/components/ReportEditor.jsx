@@ -14,10 +14,10 @@ function getAutoSeasonKey() {
 
 // 季節キー（spring/summer/autumn/winter）からテーマ情報を返す
 const SEASON_THEMES = {
-  spring: { name: '春', emoji: '🌸', decorations: ['🌸', '🌷', '🐝', '🦋'], color: '#F472B6' },
-  summer: { name: '夏', emoji: '🏖️', decorations: ['🍉', '🌊', '🐚', '☀️', '🌺'], color: '#06B6D4' },
-  autumn: { name: '秋', emoji: '🍁', decorations: ['🍁', '🍂', '🌾', '🎑'], color: '#F97316' },
-  winter: { name: '冬', emoji: '⛄', decorations: ['❄️', '⛄', '🎄', '✨'], color: '#4F46E5' },
+  spring: { name: '春', emoji: '🌸', decorations: ['🌸', '🌷', '🌼', '🦋', '🐝', '🌱'], color: '#F472B6' },
+  summer: { name: '夏', emoji: '🏖️', decorations: ['🍉', '🌊', '🐚', '☀️', '🌻', '🌺'], color: '#06B6D4' },
+  autumn: { name: '秋', emoji: '🍁', decorations: ['🍁', '🍂', '🌰', '🍄', '🌾', '🍇'], color: '#F97316' },
+  winter: { name: '冬', emoji: '⛄', decorations: ['❄️', '⛄', '⭐', '🎄', '🧣', '✨'], color: '#4F46E5' },
 }
 
 // season（'auto'含む）から表示用テーマを取得

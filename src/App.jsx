@@ -22,7 +22,7 @@ const SEASON_THEMES = {
     headerTextBtn: 'text-pink-500',
     bodyBg: 'bg-pink-50',
     emoji: '🌸',
-    decorations: ['🌸', '🌷', '🐝', '🦋'],
+    decorations: ['🌸', '🌷', '🌼', '🦋', '🐝', '🌱'],
   },
   summer: {
     name: '夏',
@@ -40,7 +40,7 @@ const SEASON_THEMES = {
     headerTextBtn: 'text-orange-600',
     bodyBg: 'bg-orange-50',
     emoji: '🍁',
-    decorations: ['🍁', '🍂', '🌾', '🎑'],
+    decorations: ['🍁', '🍂', '🌰', '🍄', '🌾', '🍇'],
   },
   winter: {
     name: '冬',
@@ -49,7 +49,7 @@ const SEASON_THEMES = {
     headerTextBtn: 'text-indigo-600',
     bodyBg: 'bg-blue-50',
     emoji: '⛄',
-    decorations: ['❄️', '⛄', '🎄', '✨'],
+    decorations: ['❄️', '⛄', '⭐', '🎄', '🧣', '✨'],
   },
 }
 

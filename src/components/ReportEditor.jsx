@@ -175,45 +175,14 @@ function ReportEditor({ report, onSave, onSaveOnly, onBack, registerGetData, onS
           files: [file],
         })
       } else {
-        // Web Share APIが使えない場合はダウンロードにフォールバック
+        // Web Share APIが使えない場合（主にPC）はダウンロードにフォールバック
         await generatePDF(formData)
-        alert('お使いのブラウザでは共有機能が使えないため、PDFをダウンロードしました。メールアプリから添付してください。')
+        alert('お使いの環境では直接共有ができないため、PDFを保存しました。保存したPDFファイルを、メールやLINEに添付してお送りください。')
       }
     } catch (error) {
       if (error.name !== 'AbortError') {
         alert('共有中にエラーが発生しました: ' + error.message)
       }
-    }
-    setIsGeneratingPdf(false)
-  }
-
-  // メールで送る：先にPDFを保存し、続けてメールアプリを新規作成状態で開く。
-  // ブラウザの制約でPDFの自動添付はできないため、本文に添付のお願いを記載しておく。
-  const handleEmailPDF = async () => {
-    setIsGeneratingPdf(true)
-    try {
-      // まずPDFを端末に保存する
-      await generatePDF(formData)
-
-      // メールの件名・本文を組み立てる
-      const title = formData.title || '報告書'
-      const subject = `報告書送付：${title}`
-      const bodyLines = [
-        'お世話になっております。',
-        '',
-        `報告書「${title}」をお送りします。`,
-        formData.date ? `日付：${formData.date}` : null,
-        formData.author ? `利用者：${formData.author}様` : null,
-        '',
-        '※ さきほど保存したPDFファイルを、このメールに添付してお送りください。',
-      ].filter((line) => line !== null)
-      const body = bodyLines.join('\n')
-
-      // mailto: でメールアプリを起動（宛先は空欄＝ユーザーが入力）
-      const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-      window.location.href = mailtoUrl
-    } catch (error) {
-      alert('メール作成の準備中にエラーが発生しました: ' + error.message)
     }
     setIsGeneratingPdf(false)
   }
@@ -435,10 +404,7 @@ function ReportEditor({ report, onSave, onSaveOnly, onBack, registerGetData, onS
           {isGeneratingPdf ? '⏳ 生成中...' : '📄 PDF保存'}
         </button>
         <button onClick={handleSharePDF} disabled={isGeneratingPdf} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors font-medium">
-          📤 PDFを共有
-        </button>
-        <button onClick={handleEmailPDF} disabled={isGeneratingPdf} className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition-colors font-medium">
-          {isGeneratingPdf ? '⏳ 準備中...' : '📧 メールで送る'}
+          {isGeneratingPdf ? '⏳ 準備中...' : '📤 メール・LINEで送る（PDF添付）'}
         </button>
         <button onClick={handlePrint} className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors font-medium">
           🖨️ コンビニプリント
